@@ -1,0 +1,122 @@
+import { useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+
+function Login({ setUser }: { setUser: (user: any) => void }) {
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [error, setError] = useState("");  
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: { preventDefault: () => void; }) => {
+    e.preventDefault();
+
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    try {
+      const { name, email, password } = form;
+      const res = await axios.post(
+        "/api/auth/register", 
+        { name, email, password }
+      );
+      setUser(res.data.user);
+      navigate("/");
+    } catch (err) {
+      setError("Registration failed");
+    }
+  };
+
+
+  return (
+    <div className="flex w-full h-screen">
+      <div className="w-full flex items-center justify-center lg:w-1/2">
+  
+    <div className="bg-white px-10 py-20 rounded-3xl border-2 border-gray-200">
+      <h1 className='text-5xl font-semibold'>Sign up</h1>
+      <p className='font-medium text-lg text-gray-500 mt-4'>Please enter your details</p>
+      <form className="mt-8" onSubmit={handleSubmit}>
+        <div>
+          <label className="text-lg font-medium">name</label>
+          <input
+            className='w-full border-2 border-gray-100 rounded-xl p-4 mt-1 bg-transparent'
+            placeholder="Enter your name"
+            value={form.name}
+            onChange={(e) => setForm({...form, name: e.target.value})}
+          />
+        </div>
+        <div>
+          <label className="text-lg font-medium">Email</label>
+          <input
+            className='w-full border-2 border-gray-100 rounded-xl p-4 mt-1 bg-transparent'
+            placeholder="Enter your email"
+            value={form.email}
+            onChange={(e) => setForm({...form, email: e.target.value})}
+          />
+        </div>
+        <div>
+          <label className="text-lg font-medium">Password</label>
+          <input
+            className='w-full border-2 border-gray-100 rounded-xl p-4 mt-1 bg-transparent'
+            placeholder="Enter your password"
+            type="password"
+            value={form.password}
+            onChange={(e) => setForm({...form, password: e.target.value})}
+          />
+        </div>
+        <div>
+          <label className="text-lg font-medium">Confirm Password</label>
+          <input
+            className='w-full border-2 border-gray-100 rounded-xl p-4 mt-1 bg-transparent'
+            placeholder="Confirm your password"
+            type="password"
+            value={form.confirmPassword}
+            onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+          />
+        </div>
+        {/* <div className="mt-8 flex justify-between items-center">
+          <div>
+            <input 
+              type="checkbox"
+              id='remember'
+            />
+            <label className="ml-2 font-medium text-base" htmlFor="remember">Remember for 30 days</label>
+          </div>
+          <button type="button" className="font-medium text-base text-blue-500">Forgot password</button>
+        </div> */}
+        <div className="mt-8 flex flex-col gap-y-4">
+          {error && <p className="text-red-500 text-center">{error}</p>}
+          <button onSubmit={handleSubmit} type="submit" className="active:scale-[.98] active:duration-75 hover:scale-[1.01] easy-in-out transition-all py-3 rounded-xl bg-blue-500 text-white text-lg font-bold">Sign in</button>
+          {/* <button type="button" className="flex rounded-xl py-3 border-2 border-gray-100 items-center justify-center gap-2 active:scale-[.98] active:duration-75 hover:scale-[1.01] easy-in-out transition-all">
+            <svg width="24px" height="24px" viewBox="0 0 256 262" version="1.1" preserveAspectRatio="xMidYMid">
+                <path d="M255.878,133.451 C255.878,122.717 255.007,114.884 253.122,106.761 L130.55,106.761 L130.55,155.209 L202.497,155.209 C201.047,167.249 193.214,185.381 175.807,197.565 L175.563,199.187 L214.318,229.21 L217.003,229.478 C241.662,206.704 255.878,173.196 255.878,133.451" fill="#4285F4"/>
+                <path d="M130.55,261.1 C165.798,261.1 195.389,249.495 217.003,229.478 L175.807,197.565 C164.783,205.253 149.987,210.62 130.55,210.62 C96.027,210.62 66.726,187.847 56.281,156.37 L54.75,156.5 L14.452,187.687 L13.925,189.152 C35.393,231.798 79.49,261.1 130.55,261.1" fill="#34A853"/>
+                <path d="M56.281,156.37 C53.525,148.247 51.93,139.543 51.93,130.55 C51.93,121.556 53.525,112.853 56.136,104.73 L56.063,103 L15.26,71.312 L13.925,71.947 C5.077,89.644 0,109.517 0,130.55 C0,151.583 5.077,171.455 13.925,189.152 L56.281,156.37" fill="#FBBC05"/>
+                <path d="M130.55,50.479 C155.064,50.479 171.6,61.068 181.029,69.917 L217.873,33.943 C195.245,12.91 165.798,0 130.55,0 C79.49,0 35.393,29.301 13.925,71.947 L56.136,104.73 C66.726,73.253 96.027,50.479 130.55,50.479" fill="#EB4335"/>
+            </svg>
+            Sign up with Google
+          </button> */}
+        </div>
+        <div className="mt-8 flex justify-center items-center">
+          <p className="font-medium text-base">Have an account?</p>
+          <button type="button" onClick={() => navigate("/login")} className="text-blue-500 text-base font-medium ml-2">Login</button>
+        </div>
+      </form>
+    </div>
+
+    </div>
+      <div className="hidden lg:flex h-full w-1/2 items-center justify-center bg-gray-200">
+        <div className="">
+          <img src="/mapkz.svg" alt="Kazakhstan Dots Map" />
+        </div>
+      </div>
+    </div>
+  )
+}
+export default Login;
