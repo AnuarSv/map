@@ -16,7 +16,7 @@ const cookieOptions = {
 
 // helper: создаём токен по id пользователя
 const generateToken = (userId) => {
-    return jwt.sign({ id: userId }, process.env.JWT_SECRET, { 
+    return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
         expiresIn: '30d'
     });
 }
@@ -37,7 +37,7 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await pool.query(
-        'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
+        'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email, role',
         [name, email, hashedPassword]
     );
     const token = generateToken(newUser.rows[0].id);
@@ -69,10 +69,12 @@ router.post('/login', async (req, res) => {
     const token = generateToken(userData.id);
     res.cookie('token', token, cookieOptions);
 
-    res.json({ user: {
-        id: userData.id, 
-        name: userData.name, 
-        email: userData.email 
+    res.json({
+        user: {
+            id: userData.id,
+            name: userData.name,
+            email: userData.email,
+            role: userData.role || 'user'
         },
     });
 })
