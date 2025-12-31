@@ -1,37 +1,92 @@
-# Water Map Kz
-## 1. Create table in PostgreSQL
-```sql
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(100) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-## 2. Create .env and fill in backend/
-```env
-# EXAMPLE
-PORT=5000
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_NAME=pern_auth
-DB_USER=admin
-DB_PASSWORD=admin123
-JWT_SECRET=123456
-CLIENT_URL=http://localhost:5173
-```
-## 3. Install npm
+# WaterMap Pro
+
+Kazakhstan water resources mapping and management system.
+
+## Requirements
+
+- Go 1.21+
+- Node.js 18+
+- PostgreSQL 15+
+- Docker (optional)
+
+## Quick Start
+
+### 1. Database
+
+Start PostgreSQL:
 ```bash
-npm i
+docker run -d --name watermap-db \
+  -e POSTGRES_USER=watermap \
+  -e POSTGRES_PASSWORD=watermap \
+  -e POSTGRES_DB=watermap \
+  -p 5432:5432 postgres:15
 ```
 
-## 4. Run backend
+### 2. Backend
+
 ```bash
-cd backend/ && npm run dev
+cd backend
+
+# Create .env
+cat > .env << EOF
+DATABASE_URL=postgres://watermap:watermap@localhost:5432/watermap?sslmode=disable
+JWT_SECRET=your-secret-key
+EOF
+
+# Initialize database (creates tables + seeds users)
+go run ./cmd/init/
+
+# Start server
+go run ./cmd/server/
 ```
 
-## 5. Run frontend
+### 3. Frontend
+
 ```bash
-cd map/ && npm run dev
+cd frontend
+npm install
+npm run dev
 ```
+
+Application runs at http://localhost:5174
+
+## Default Accounts
+
+| Role   | Username | Password |
+|--------|----------|----------|
+| Admin  | admin1   | 123456   |
+| Expert | expert1  | 123456   |
+| User   | user1    | 123456   |
+
+Login format: `{username}@watermap.kz`
+
+## Project Structure
+
+```
+backend/
+  cmd/
+    server/     - Main API server
+    init/       - Database initialization
+  internal/
+    adapter/    - Handlers, repositories
+    domain/     - Entities, business logic
+    
+frontend/
+  src/
+    pages/      - Route components
+    components/ - Reusable UI
+    store/      - Zustand state
+```
+
+## API Endpoints
+
+| Method | Endpoint           | Description       |
+|--------|-------------------|-------------------|
+| POST   | /api/auth/login   | Authenticate      |
+| POST   | /api/auth/register| Create account    |
+| GET    | /api/admin/users  | List users (admin)|
+| GET    | /api/objects      | List water objects|
+
+## License
+
+Proprietary. See LICENSE file.
