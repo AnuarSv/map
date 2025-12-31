@@ -1,1 +1,175 @@
 @import "tailwindcss";
+
+/* Enable class-based dark mode for Tailwind v4 */
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+    /* Enterprise Palette - Deep Blue & Indigo */
+
+    /* Primary / Accent (Indigo) */
+    --color-primary-50: #eef2ff;
+    --color-primary-100: #e0e7ff;
+    --color-primary-200: #c7d2fe;
+    --color-primary-300: #a5b4fc;
+    --color-primary-400: #818cf8;
+    --color-primary-500: #6366f1;
+    /* Main Brand Color */
+    --color-primary-600: #4f46e5;
+    --color-primary-700: #4338ca;
+    --color-primary-800: #3730a3;
+    --color-primary-900: #312e81;
+    --color-primary-950: #1e1b4b;
+
+    /* Neutral Slate (Dark Mode Backgrounds) */
+    --color-slate-50: #f8fafc;
+    --color-slate-100: #f1f5f9;
+    --color-slate-200: #e2e8f0;
+    --color-slate-300: #cbd5e1;
+    --color-slate-400: #94a3b8;
+    --color-slate-500: #64748b;
+    --color-slate-600: #475569;
+    --color-slate-700: #334155;
+    /* Borders */
+    --color-slate-800: #1e293b;
+    /* Sidebar / Cards */
+    --color-slate-900: #0f172a;
+    /* Main Background */
+    --color-slate-950: #020617;
+
+    /* Semantic Colors */
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-info: #3b82f6;
+
+    /* Font */
+    --font-sans: "Inter", system-ui, sans-serif;
+
+    /* Radius */
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
+}
+
+/* ===== THEME SYSTEM ===== */
+
+/* CSS Variables for Theme */
+:root {
+    --bg-base: #0f172a;
+    --bg-surface: #1e293b;
+    --bg-elevated: #334155;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --border-color: #334155;
+    --accent: #6366f1;
+    --transition-theme: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Light Mode Overrides */
+:root:not(.dark) {
+    --bg-base: #f1f5f9;
+    --bg-surface: #ffffff;
+    --bg-elevated: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --border-color: #e2e8f0;
+}
+
+/* Snappy transitions for theme variables */
+*,
+*::before,
+*::after {
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+        color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Base Styles */
+body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Glassmorphism Utilities */
+.glass-panel {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+:root:not(.dark) .glass-panel {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.glass-header {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border-color);
+}
+
+:root:not(.dark) .glass-header {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+/* Table Styles */
+.data-table-row {
+    transition: background-color 0.2s;
+}
+
+.data-table-row:hover {
+    background-color: rgba(51, 65, 85, 0.3);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-slate-700);
+    border-radius: 3px;
+}
+
+:root:not(.dark) ::-webkit-scrollbar-thumb {
+    background: var(--color-slate-300);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-slate-600);
+}
+
+/* Theme-aware utility classes */
+.bg-theme-base {
+    background-color: var(--bg-base);
+}
+
+.bg-theme-surface {
+    background-color: var(--bg-surface);
+}
+
+.bg-theme-elevated {
+    background-color: var(--bg-elevated);
+}
+
+.text-theme-primary {
+    color: var(--text-primary);
+}
+
+.text-theme-secondary {
+    color: var(--text-secondary);
+}
+
+.border-theme {
+    border-color: var(--border-color);
+}

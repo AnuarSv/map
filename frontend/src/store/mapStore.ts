@@ -32,6 +32,7 @@ interface MapState {
     submitForReview: (id: number) => Promise<void>;
     deleteDraft: (id: number) => Promise<void>;
     resetEditor: () => void;
+    addLocalDraft: (draft: WaterObject) => void;
 }
 
 export const useMapStore = create<MapState>()(
@@ -46,6 +47,12 @@ export const useMapStore = create<MapState>()(
             currentObjectType: 'river',
             pendingGeometry: null,
             selectedObjectId: null,
+
+            addLocalDraft: (draft) => {
+                set((state) => ({
+                    myDrafts: [...state.myDrafts, draft]
+                }));
+            },
 
             fetchPublishedObjects: async () => {
                 set({ publishedLoading: true });

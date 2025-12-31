@@ -1,94 +1,218 @@
-import { useState } from "react";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mail, Lock, User, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { ThemeSwitcher } from '../components/ui/ThemeSwitcher';
 
-function Login({ setUser }: { setUser: (user: any) => void }) {
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-  });
-  const [error, setError] = useState("");  
+export default function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useAuthStore();
+  const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: { preventDefault: () => void; }) => {
+  // Form State
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError(null);
+
     try {
-      const res = await axios.post(
-        "/api/auth/login", 
-        form
-      );
-      setUser(res.data.user);
-      navigate("/");
-    } catch (err) {
-      setError("Invalid email or password");
+      if (isLogin) {
+        const identifier = email.includes('@') ? email : `${email}@watermap.kz`;
+
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: identifier, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.message || 'Login failed');
+        }
+
+        login(data.user, 'cookie-handled-by-browser');
+        navigate({
+          'admin': '/admin/users',
+          'expert': '/expert/map-editor',
+          'user': '/map'
+        }[data.user.role as string] || '/map');
+
+      } else {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Registration failed');
+
+        login(data.user, 'cookie');
+        navigate('/map');
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-
   return (
-    <div className="flex w-full h-screen">
-      <div className="w-full flex items-center justify-center lg:w-1/2">
-  
-    <div className="bg-white px-10 py-20 rounded-3xl border-2 border-gray-200">
-      <h1 className='text-5xl font-semibold'>Login</h1>
-      <p className='font-medium text-lg text-gray-500 mt-4'>Please enter your details</p>
-      <form className="mt-8" onSubmit={handleSubmit}>
-        <div>
-          <label className="text-lg font-medium">Email</label>
-          <input
-            className='w-full border-2 border-gray-100 rounded-xl p-4 mt-1 bg-transparent'
-            placeholder="Enter your email"
-            value={form.email}
-            onChange={(e) => setForm({...form, email: e.target.value})}
-          />
-        </div>
-        <div>
-          <label className="text-lg font-medium">Password</label>
-          <input
-            className='w-full border-2 border-gray-100 rounded-xl p-4 mt-1 bg-transparent'
-            placeholder="Enter your password"
-            type="password"
-            value={form.password}
-            onChange={(e) => setForm({...form, password: e.target.value})}
-          />
-        </div>
-        {/* <div className="mt-8 flex justify-between items-center">
-          <div>
-            <input 
-              type="checkbox"
-              id='remember'
-            />
-            <label className="ml-2 font-medium text-base" htmlFor="remember">Remember for 30 days</label>
-          </div>
-          <button type="button" className="font-medium text-base text-blue-500">Forgot password</button>
-        </div> */}
-        <div className="mt-8 flex flex-col gap-y-4">
-          {error && <p className="text-red-500 text-center">{error}</p>}
-          <button onSubmit={handleSubmit} type="submit" className="active:scale-[.98] active:duration-75 hover:scale-[1.01] easy-in-out transition-all py-3 rounded-xl bg-blue-500 text-white text-lg font-bold">Sign in</button>
-          {/* <button type="button" className="flex rounded-xl py-3 border-2 border-gray-100 items-center justify-center gap-2 active:scale-[.98] active:duration-75 hover:scale-[1.01] easy-in-out transition-all">
-            <svg width="24px" height="24px" viewBox="0 0 256 262" version="1.1" preserveAspectRatio="xMidYMid">
-                <path d="M255.878,133.451 C255.878,122.717 255.007,114.884 253.122,106.761 L130.55,106.761 L130.55,155.209 L202.497,155.209 C201.047,167.249 193.214,185.381 175.807,197.565 L175.563,199.187 L214.318,229.21 L217.003,229.478 C241.662,206.704 255.878,173.196 255.878,133.451" fill="#4285F4"/>
-                <path d="M130.55,261.1 C165.798,261.1 195.389,249.495 217.003,229.478 L175.807,197.565 C164.783,205.253 149.987,210.62 130.55,210.62 C96.027,210.62 66.726,187.847 56.281,156.37 L54.75,156.5 L14.452,187.687 L13.925,189.152 C35.393,231.798 79.49,261.1 130.55,261.1" fill="#34A853"/>
-                <path d="M56.281,156.37 C53.525,148.247 51.93,139.543 51.93,130.55 C51.93,121.556 53.525,112.853 56.136,104.73 L56.063,103 L15.26,71.312 L13.925,71.947 C5.077,89.644 0,109.517 0,130.55 C0,151.583 5.077,171.455 13.925,189.152 L56.281,156.37" fill="#FBBC05"/>
-                <path d="M130.55,50.479 C155.064,50.479 171.6,61.068 181.029,69.917 L217.873,33.943 C195.245,12.91 165.798,0 130.55,0 C79.49,0 35.393,29.301 13.925,71.947 L56.136,104.73 C66.726,73.253 96.027,50.479 130.55,50.479" fill="#EB4335"/>
-            </svg>
-            Login with Google
-          </button> */}
-        </div>
-        <div className="mt-8 flex justify-center items-center">
-          <p className="font-medium text-base">Don't have an account?</p>
-          <button type="button" onClick={() => navigate("/register")} className="text-blue-500 text-base font-medium ml-2">Sign up</button>
-        </div>
-      </form>
-    </div>
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden transition-all duration-300 bg-slate-100 dark:bg-slate-950">
+      {/* Theme Switcher - Now renders as fixed floating button */}
+      <ThemeSwitcher />
 
-    </div>
-      <div className="hidden lg:flex h-full w-1/2 items-center justify-center bg-gray-200">
-        <div className="">
-          <img src="/mapkz.svg" alt="Kazakhstan Dots Map" />
-        </div>
+      {/* Background Decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full blur-3xl animate-pulse transition-colors duration-300 bg-primary-200/40 dark:bg-primary-900/20" />
+        <div className="absolute top-[40%] -right-[10%] w-[40%] h-[40%] rounded-full blur-3xl animate-pulse delay-1000 transition-colors duration-300 bg-blue-200/40 dark:bg-blue-900/20" />
       </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md relative z-10"
+      >
+        {/* Card */}
+        <div className="backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden transition-all duration-500 bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
+
+          {/* Header */}
+          <div className="p-8 text-center border-b transition-colors duration-500 border-slate-200/50 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="w-12 h-12 bg-gradient-to-tr from-primary-500 to-primary-600 rounded-xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-primary-500/20">
+              <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 text-white" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-bold tracking-tight transition-colors duration-500 text-slate-900 dark:text-white">WaterMap Professional</h1>
+            <p className="text-sm mt-1 transition-colors duration-500 text-slate-500 dark:text-slate-400">Enterprise Water Management System</p>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex border-b transition-colors duration-500 border-slate-200/50 dark:border-slate-800/50">
+            <button
+              onClick={() => { setIsLogin(true); setError(null); }}
+              className={`flex-1 py-3 text-sm font-medium transition-colors relative ${isLogin ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}
+            >
+              Sign In
+              {isLogin && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />}
+            </button>
+            <button
+              onClick={() => { setIsLogin(false); setError(null); }}
+              className={`flex-1 py-3 text-sm font-medium transition-colors relative ${!isLogin ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}
+            >
+              Create Account
+              {!isLogin && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />}
+            </button>
+          </div>
+
+          {/* Form */}
+          <div className="p-8">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <AnimatePresence mode="wait">
+                {error && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex gap-2 items-start text-red-500 dark:text-red-400 text-sm"
+                  >
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>{error}</span>
+                  </motion.div>
+                )}
+
+                {!isLogin && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="space-y-4 overflow-hidden"
+                  >
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium uppercase tracking-wide ml-1 transition-colors duration-500 text-slate-500 dark:text-slate-400">Full Name</label>
+                      <div className="relative group">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors text-slate-400 dark:text-slate-500 group-focus-within:text-primary-500" />
+                        <input
+                          type="text"
+                          required={!isLogin}
+                          value={name}
+                          onChange={e => setName(e.target.value)}
+                          className="w-full rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                          placeholder="John Doe"
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium uppercase tracking-wide ml-1 transition-colors duration-500 text-slate-500 dark:text-slate-400">
+                  {isLogin ? 'Email or Username' : 'Email Address'}
+                </label>
+                <div className="relative group">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors text-slate-400 dark:text-slate-500 group-focus-within:text-primary-500" />
+                  <input
+                    type="text"
+                    required
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    className="w-full rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                    placeholder={isLogin ? "admin1" : "name@company.com"}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between items-center ml-1">
+                  <label className="text-xs font-medium uppercase tracking-wide transition-colors duration-500 text-slate-500 dark:text-slate-400">Password</label>
+                  {isLogin && (
+                    <a href="#" className="text-xs text-primary-500 hover:text-primary-400">Forgot?</a>
+                  )}
+                </div>
+                <div className="relative group">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors text-slate-400 dark:text-slate-500 group-focus-within:text-primary-500" />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="w-full rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-primary-600 hover:bg-primary-500 text-white font-medium py-2.5 rounded-xl shadow-lg shadow-primary-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-6 disabled:opacity-50 disabled:cursor-wait"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    {isLogin ? 'Sign In' : 'Create Account'}
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <p className="text-center text-xs mt-6 transition-colors duration-500 text-slate-400 dark:text-slate-600">
+          &copy; 2025 WaterMap System. Restricted Access.
+        </p>
+      </motion.div>
     </div>
-  )
+  );
 }
-export default Login;

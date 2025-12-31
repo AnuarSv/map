@@ -1,81 +1,119 @@
-import { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import Register from "./pages/register";
-import Login from "./pages/login";
-import Home from "./pages/home"
-import Navbar from "./components/navbar"
-import axios from "axios";
-import NotFound from "./components/notfound";
-import Dashboard from "./pages/dashboard";
-import EditorPage from "./pages/expert/EditorPage";
-import ReviewPage from "./pages/admin/ReviewPage";
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useAuthStore } from './store/authStore';
+import { DashboardLayout } from './components/layout/DashboardLayout';
 
-axios.defaults.withCredentials = true;
+// Pages
+import LoginPage from './pages/login';
+import PublicMapPage from './pages/map';
+import EditorPage from './pages/expert/EditorPage';
+import UsersPage from './pages/admin/UsersPage';
 
-type UserRole = 'user' | 'expert' | 'admin';
+// User Pages
+import UserDashboard from './pages/user/DashboardPage';
+import MyReviewsPage from './pages/user/MyReviewsPage';
+import NotificationsPage from './pages/user/NotificationsPage';
+import SettingsPage from './pages/user/SettingsPage';
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: UserRole;
+// Simple RBAC Wrapper
+const ProtectedRoute = ({ children, roles = [] }: { children: React.ReactNode, roles?: string[] }) => {
+    const { user, isAuthenticated } = useAuthStore();
+
+    if (!isAuthenticated) return <Navigate to="/login" />;
+    if (roles.length > 0 && user && !roles.includes(user.role)) return <Navigate to="/unauthorized" />;
+
+    return <DashboardLayout>{children}</DashboardLayout>;
+};
+
+// Layout-less Route
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+    return <>{children}</>;
+};
+
+export default function App() {
+    const { checkAuth } = useAuthStore();
+
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
+
+    return (
+        <BrowserRouter>
+            <Routes>
+                {/* Public */}
+                <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+
+                {/* Public Map - with sidebar when logged in */}
+                <Route
+                    path="/map"
+                    element={
+                        <ProtectedRoute>
+                            <div className="-m-6 h-[calc(100vh-4rem)]">
+                                <PublicMapPage />
+                            </div>
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* User Dashboard (all authenticated users) */}
+                <Route
+                    path="/user/dashboard"
+                    element={
+                        <ProtectedRoute>
+                            <UserDashboard />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/user/my-reviews"
+                    element={
+                        <ProtectedRoute>
+                            <MyReviewsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/user/notifications"
+                    element={
+                        <ProtectedRoute>
+                            <NotificationsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/user/settings"
+                    element={
+                        <ProtectedRoute>
+                            <SettingsPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Expert */}
+                <Route
+                    path="/expert/map-editor"
+                    element={
+                        <ProtectedRoute roles={['expert', 'admin']}>
+                            <div className="-m-6 h-[calc(100vh-4rem)]"> {/* Full screen override */}
+                                <EditorPage />
+                            </div>
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Admin */}
+                <Route
+                    path="/admin/users"
+                    element={
+                        <ProtectedRoute roles={['admin']}>
+                            <UsersPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Redirects */}
+                <Route path="/" element={<Navigate to="/login" />} />
+            </Routes>
+        </BrowserRouter>
+    );
 }
-
-function App() {
-
-  const [user, setUser] = useState<User | null>(null);
-  const [error] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await axios.get("/api/auth/me");
-        setUser(res.data);
-      } catch (err) {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchUser();
-  }, []);
-
-  if (loading) {
-    return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>;
-  }
-
-  // Helper to check if user has required role
-  const hasRole = (requiredRoles: UserRole[]) => {
-    return user && requiredRoles.includes(user.role);
-  };
-
-  return (
-    <Router>
-      <Navbar user={user} setUser={setUser} />
-      <Routes>
-        <Route path="/" element={<Home user={user} error={error} />} />
-        <Route path="/login" element={user ? <Navigate to={"/"} /> : <Login setUser={setUser} />} />
-        <Route path="/register" element={user ? <Navigate to={"/"} /> : <Register setUser={setUser} />} />
-        <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" replace />} />
-
-        {/* Expert-only routes */}
-        <Route
-          path="/editor"
-          element={hasRole(['expert', 'admin']) ? <EditorPage /> : <Navigate to="/" replace />}
-        />
-
-        {/* Admin-only routes */}
-        <Route
-          path="/admin"
-          element={hasRole(['admin']) ? <ReviewPage /> : <Navigate to="/" replace />}
-        />
-
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Router>
-
-  )
-}
-
-export default App;
