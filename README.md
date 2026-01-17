@@ -1,92 +1,73 @@
-# WaterMap Pro
+# WaterMap
 
-Kazakhstan water resources mapping and management system.
+Система управления гидрологическими данными Казахстана.
 
-## Requirements
+## Требования
 
-- Go 1.21+
-- Node.js 18+
-- PostgreSQL 15+
-- Docker (optional)
+- Docker 24+
+- Docker Compose v2
 
-## Quick Start
-
-### 1. Database
-
-Start PostgreSQL:
-```bash
-docker run -d --name watermap-db \
-  -e POSTGRES_USER=watermap \
-  -e POSTGRES_PASSWORD=watermap \
-  -e POSTGRES_DB=watermap \
-  -p 5432:5432 postgres:15
-```
-
-### 2. Backend
+## Запуск
 
 ```bash
-cd backend
+# Клонировать репозиторий
+git clone https://github.com/your-org/watermap.git
+cd watermap
 
-# Create .env
-cat > .env << EOF
-DATABASE_URL=postgres://watermap:watermap@localhost:5432/watermap?sslmode=disable
-JWT_SECRET=your-secret-key
-EOF
+# Создать .env файл
+cp .env.example .env
 
-# Initialize database (creates tables + seeds users)
-go run ./cmd/init/
+# Запустить все сервисы
+docker compose up -d
 
-# Start server
-go run ./cmd/server/
+# Инициализировать базу данных (первый запуск)
+docker compose exec backend ./init
 ```
 
-### 3. Frontend
+Приложение доступно: http://localhost:8080
+
+## Учетные данные по умолчанию
+
+| Роль | Email | Пароль |
+|------|-------|--------|
+| Admin | admin1@watermap.kz | 123456 |
+| Expert | expert1@watermap.kz | 123456 |
+| User | user1@watermap.kz | 123456 |
+
+## Сервисы
+
+| Сервис | Порт | Описание |
+|--------|------|----------|
+| Frontend | 8080 | React + Nginx |
+| Backend | 8081 | Go API |
+| PostgreSQL | 5432 | База данных |
+| Redis | 6379 | Кэш |
+
+## Команды
 
 ```bash
-cd frontend
-npm install
-npm run dev
+# Остановить
+docker compose down
+
+# Пересобрать
+docker compose build --no-cache
+
+# Логи
+docker compose logs -f backend
+
+# Перезапустить один сервис
+docker compose restart frontend
 ```
 
-Application runs at http://localhost:5174
-
-## Default Accounts
-
-| Role   | Username | Password |
-|--------|----------|----------|
-| Admin  | admin1   | 123456   |
-| Expert | expert1  | 123456   |
-| User   | user1    | 123456   |
-
-Login format: `{username}@watermap.kz`
-
-## Project Structure
+## Структура
 
 ```
-backend/
-  cmd/
-    server/     - Main API server
-    init/       - Database initialization
-  internal/
-    adapter/    - Handlers, repositories
-    domain/     - Entities, business logic
-    
-frontend/
-  src/
-    pages/      - Route components
-    components/ - Reusable UI
-    store/      - Zustand state
+├── backend/          # Go API
+├── frontend/         # React приложение
+├── docker-compose.yml
+└── README.md
 ```
 
-## API Endpoints
+## Лицензия
 
-| Method | Endpoint           | Description       |
-|--------|-------------------|-------------------|
-| POST   | /api/auth/login   | Authenticate      |
-| POST   | /api/auth/register| Create account    |
-| GET    | /api/admin/users  | List users (admin)|
-| GET    | /api/objects      | List water objects|
-
-## License
-
-Proprietary. See LICENSE file.
+См. [LICENSE](LICENSE)

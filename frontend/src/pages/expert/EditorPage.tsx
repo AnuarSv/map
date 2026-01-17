@@ -1,294 +1,380 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
+import { useMap } from 'react-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import 'leaflet-draw/dist/leaflet.draw.css';
 import 'leaflet-draw';
-import { ExpertToolbar, type EditorTool, type LayerType } from '../../components/editor/ExpertToolbar';
-import { RightPanel } from '../../components/editor/RightPanel';
-import type { WaterObject } from '../../types/waterObject';
+import 'leaflet-draw/dist/leaflet.draw.css';
+import {
+    MousePointer2,
+    Pencil,
+    Save,
+    Locate,
+    Sun,
+    Moon,
+    Eye,
+    EyeOff,
+    X,
+    Droplets,
+    Search,
+    Loader2,
+    Plus,
+    Minus,
+    Zap
+} from 'lucide-react';
+import { MapContainer as MapContainerOrig, GeoJSON as GeoJSONOrig } from 'react-leaflet';
 
-// Initial center for Kazakhstan
-const kazakhstanCenter: [number, number] = [48.0, 67.0];
+const MapContainer = MapContainerOrig as any;
+const GeoJSON = GeoJSONOrig as any;
 
-// Fix types for react-leaflet components
-const AnyMapContainer = MapContainer as any;
-const AnyTileLayer = TileLayer as any;
-const AnyGeoJSON = GeoJSON as any;
+// --- IndexedDB Cache ---
+const DB_NAME = 'watermap-cache';
+const STORE_NAME = 'geojson';
+const CACHE_KEY = 'kazakhstan-water';
 
-// Map Controls Component
-function MapController({ onMapReady }: { onMapReady: (map: any) => void }) {
-    const map = useMap();
-    useEffect(() => {
-        onMapReady(map);
-    }, [map, onMapReady]);
-    return null;
+async function openDB(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => resolve(req.result);
+        req.onupgradeneeded = () => {
+            req.result.createObjectStore(STORE_NAME);
+        };
+    });
 }
 
-export default function EditorPage() {
-    // Map ref
-    const mapRef = useRef<any>(null);
-    const layerRefs = useRef<Record<string, any>>({});
+async function getCachedData(): Promise<any | null> {
+    try {
+        const db = await openDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.get(CACHE_KEY);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+        });
+    } catch { return null; }
+}
 
-    // Water data state
-    const [waterData, setWaterData] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [hasChanges, setHasChanges] = useState(false);
+async function setCachedData(data: any): Promise<void> {
+    try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).put(data, CACHE_KEY);
+    } catch { /* ignore */ }
+}
 
-    // Editor State
-    const [activeTool, setActiveTool] = useState<EditorTool>('pointer');
-    const [visibleLayers, setVisibleLayers] = useState<LayerType[]>(['river', 'lake', 'reservoir', 'canal', 'glacier', 'spring']);
-    const [selectedObjectId, setSelectedObjectId] = useState<number | null>(null);
+// --- Configuration ---
+const TILE_LAYERS = {
+    dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+};
 
-    // Load real water data from GeoJSON file
+const TYPE_COLORS: Record<string, string> = {
+    river: '#3b82f6', canal: '#60a5fa', lake: '#06b6d4',
+    reservoir: '#0891b2', glacier: '#a5f3fc', spring: '#22d3ee'
+};
+
+const KZ_CENTER: [number, number] = [48.0, 67.0];
+
+// --- Components ---
+const MapBaseLayer = ({ theme }: { theme: 'dark' | 'light' }) => {
+    const map = useMap();
+    const layerRef = useRef<L.TileLayer | null>(null);
+
     useEffect(() => {
-        async function loadWaterData() {
-            try {
-                setLoading(true);
-                const response = await fetch('/data/kazakhstan-water.geojson');
-                if (!response.ok) throw new Error('Failed to load water data');
-                const data = await response.json();
-                setWaterData(data);
-                console.log(`Loaded ${data.features?.length || 0} water features`);
-            } catch (err: any) {
-                console.error('Error loading water data:', err);
-                setError(err.message);
-            } finally {
+        if (layerRef.current) map.removeLayer(layerRef.current);
+        layerRef.current = L.tileLayer(TILE_LAYERS[theme], { maxZoom: 19 }).addTo(map);
+        return () => { if (layerRef.current) map.removeLayer(layerRef.current); };
+    }, [theme, map]);
+
+    return null;
+};
+
+const MapEvents = ({ onLoad }: { onLoad: (m: L.Map) => void }) => {
+    const map = useMap();
+    useEffect(() => { onLoad(map); }, [map, onLoad]);
+    return null;
+};
+
+export default function EditorPage() {
+    const mapRef = useRef<L.Map | null>(null);
+    const geoJsonRef = useRef<L.GeoJSON | null>(null);
+    const editLayerRef = useRef<L.Layer | null>(null);
+    const [zoom, setZoom] = useState(5);
+    const [fullData, setFullData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [fromCache, setFromCache] = useState(false);
+    const [mapTheme, setMapTheme] = useState<'dark' | 'light'>('dark');
+    const [activeTool, setActiveTool] = useState<'pointer' | 'pencil'>('pointer');
+    const [selectedId, setSelectedId] = useState<number | string | null>(null);
+    const [visibleTypes, setVisibleTypes] = useState<Set<string>>(new Set(['river', 'lake', 'reservoir', 'canal']));
+    const [searchQuery, setSearchQuery] = useState('');
+    const [hasChanges, setHasChanges] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    // Load with cache-first strategy
+    useEffect(() => {
+        let cancelled = false;
+
+        async function load() {
+            setLoading(true);
+
+            // 1. Try cache first (instant)
+            const cached = await getCachedData();
+            if (cached && !cancelled) {
+                setFullData(cached);
+                setFromCache(true);
                 setLoading(false);
             }
+
+            // 2. Fetch fresh in background
+            try {
+                const res = await fetch('/data/kazakhstan-water.geojson');
+                const data = await res.json();
+                if (!cancelled) {
+                    setFullData(data);
+                    setLoading(false);
+                    setCachedData(data); // Update cache
+                    setFromCache(false);
+                }
+            } catch {
+                if (!cancelled && !cached) setLoading(false);
+            }
         }
-        loadWaterData();
+
+        load();
+        return () => { cancelled = true; };
     }, []);
 
-    // Convert GeoJSON features to WaterObject format
-    const allObjects = useMemo<WaterObject[]>(() => {
-        if (!waterData?.features) return [];
-        return waterData.features.map((f: any, idx: number) => ({
-            id: f.properties.id || idx,
-            canonical_id: f.properties.osm_id ? `osm-${f.properties.osm_id}` : `osm-${f.properties.id}`,
-            version: 1,
-            name_kz: f.properties.name_kz || 'Unnamed',
-            name_ru: f.properties.name_ru || 'Unnamed',
-            name_en: f.properties.name_en || '',
-            object_type: f.properties.object_type || 'lake',
-            status: 'published',
-            created_by: 1,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            geometry: f.geometry
-        }));
-    }, [waterData]);
+    // Filter data
+    const filteredData = useMemo(() => {
+        if (!fullData?.features) return null;
+        return {
+            type: 'FeatureCollection',
+            features: fullData.features.filter((f: any) => {
+                const type = f.properties?.object_type || 'lake';
+                if (!visibleTypes.has(type)) return false;
+                if (zoom < 7 && (type === 'river' || type === 'canal')) {
+                    return f.properties?.name;
+                }
+                return true;
+            })
+        };
+    }, [fullData, visibleTypes, zoom]);
 
-    // Filtered by visible layers
-    const visibleObjects = useMemo(() => {
-        return allObjects.filter(obj => visibleLayers.includes(obj.object_type as LayerType));
-    }, [allObjects, visibleLayers]);
-
-    // Selected Object
-    const selectedObject = useMemo(() => {
-        return allObjects.find(obj => obj.id === selectedObjectId) || null;
-    }, [allObjects, selectedObjectId]);
-
-    // Vertex Editing Logic
+    // Enable editing on selected layer
     useEffect(() => {
-        Object.values(layerRefs.current).forEach(layer => {
-            if (layer?.eachLayer) {
-                layer.eachLayer((l: any) => {
-                    if (l.editing) l.editing.disable();
-                });
+        if (!geoJsonRef.current) return;
+
+        // Disable previous editing
+        if (editLayerRef.current && (editLayerRef.current as any).editing) {
+            (editLayerRef.current as any).editing.disable();
+            editLayerRef.current = null;
+        }
+
+        if (activeTool === 'pencil' && selectedId) {
+            geoJsonRef.current.eachLayer((layer: any) => {
+                const id = layer.feature?.properties?.id || layer.feature?.properties?.osm_id;
+                if (id === selectedId && layer.editing) {
+                    layer.editing.enable();
+                    editLayerRef.current = layer;
+
+                    // Listen for edits
+                    layer.on('edit', () => {
+                        setHasChanges(true);
+                    });
+                }
+            });
+        }
+    }, [activeTool, selectedId]);
+
+    // Style features
+    const styleFeature = useCallback((f: any) => {
+        const id = f?.properties?.id || f?.properties?.osm_id;
+        const isSelected = id === selectedId;
+        const type = f?.properties?.object_type || 'lake';
+        const color = TYPE_COLORS[type] || '#94a3b8';
+
+        return {
+            color: isSelected ? (activeTool === 'pencil' ? '#ef4444' : '#f59e0b') : color,
+            weight: isSelected ? 4 : 1.5,
+            opacity: isSelected ? 1 : 0.6,
+            fillOpacity: isSelected ? 0.4 : 0.1
+        };
+    }, [selectedId, activeTool]);
+
+    const onEachFeature = useCallback((feature: any, layer: L.Layer) => {
+        layer.on({
+            click: (e: any) => {
+                L.DomEvent.stopPropagation(e);
+                const id = feature.properties?.id || feature.properties?.osm_id;
+                setSelectedId(id);
+                if (mapRef.current) {
+                    mapRef.current.fitBounds((layer as any).getBounds(), { padding: [100, 100], maxZoom: 12 });
+                }
             }
         });
 
-        if (selectedObjectId && activeTool === 'pencil') {
-            const layer = layerRefs.current[selectedObjectId];
-            if (layer?.eachLayer) {
-                layer.eachLayer((l: any) => {
-                    if (l.editing) l.editing.enable();
-                });
-            }
-        }
-    }, [selectedObjectId, activeTool]);
-
-    // Handlers
-    const handleMapReady = useCallback((map: any) => {
-        mapRef.current = map;
+        const name = feature.properties?.name_kz || feature.properties?.name_ru || 'Unnamed';
+        layer.bindTooltip(`<b>${name}</b>`, { sticky: true, className: 'map-tooltip' });
     }, []);
 
-    const handleLayerToggle = (layer: LayerType) => {
-        setVisibleLayers(prev =>
-            prev.includes(layer) ? prev.filter(l => l !== layer) : [...prev, layer]
-        );
-    };
+    const selectedObject = useMemo(() => {
+        if (!selectedId || !fullData?.features) return null;
+        return fullData.features.find((f: any) => (f.properties?.id || f.properties?.osm_id) === selectedId);
+    }, [fullData, selectedId]);
 
-    const handleObjectClick = (obj: WaterObject) => {
-        if (activeTool === 'pointer' || activeTool === 'pencil') {
-            setSelectedObjectId(obj.id);
+    const handleSave = async () => {
+        setSaving(true);
 
-            // Fly to object
-            if (mapRef.current && obj.geometry) {
-                const bounds = getGeometryBounds(obj.geometry);
-                if (bounds) {
-                    mapRef.current.flyToBounds(bounds, { padding: [50, 50], duration: 0.5 });
-                }
-            }
+        // Get edited geometry if any
+        if (editLayerRef.current) {
+            const edited = (editLayerRef.current as any).toGeoJSON();
+            console.log('Edited geometry:', edited);
+            // Here you would send to backend API
         }
-    };
 
-    const handleSave = () => {
-        console.log('Saving changes...');
+        await new Promise(r => setTimeout(r, 500));
         setHasChanges(false);
-        // In real app, this would call backend API
-    };
-
-    const handlePropertyChange = (data: Partial<WaterObject>) => {
-        console.log('Property changed:', data);
-        setHasChanges(true);
-    };
-
-    const getGeometryBounds = (geometry: any) => {
-        if (!geometry?.coordinates) return null;
-
-        let coords: number[][] = [];
-        if (geometry.type === 'Polygon') {
-            coords = geometry.coordinates[0];
-        } else if (geometry.type === 'LineString') {
-            coords = geometry.coordinates;
-        } else if (geometry.type === 'MultiPolygon') {
-            coords = geometry.coordinates.flat(2);
-        }
-
-        if (!coords?.length) return null;
-
-        const lats = coords.map((c: number[]) => c[1]);
-        const lngs = coords.map((c: number[]) => c[0]);
-
-        return [
-            [Math.min(...lats), Math.min(...lngs)],
-            [Math.max(...lats), Math.max(...lngs)]
-        ];
-    };
-
-    const getObjectColor = (obj: WaterObject, isSelected: boolean) => {
-        if (isSelected) {
-            return activeTool === 'pencil' ? '#ef4444' : '#6366f1';
-        }
-
-        switch (obj.object_type) {
-            case 'river':
-            case 'canal':
-                return '#3b82f6';
-            case 'lake':
-            case 'reservoir':
-                return '#0ea5e9';
-            case 'glacier':
-                return '#a5f3fc';
-            case 'spring':
-                return '#22d3ee';
-            default:
-                return '#94a3b8';
-        }
+        setSaving(false);
     };
 
     return (
-        <div className="h-[calc(100vh-4rem)] w-full bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-white flex relative overflow-hidden">
-            {/* Main Map Area */}
-            <div className={`flex-1 relative transition-all duration-300 ${selectedObject ? 'mr-96' : 'mr-80'}`}>
-                {/* Floating Toolbar */}
-                <ExpertToolbar
-                    activeTool={activeTool}
-                    onToolChange={setActiveTool}
-                    visibleLayers={visibleLayers}
-                    onLayerToggle={handleLayerToggle}
-                    onSave={handleSave}
-                    canSave={hasChanges}
-                    canUndo={false}
-                    canRedo={false}
-                />
+        <div className="h-[calc(100vh-4rem)] w-full flex bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden">
+            {/* Left Toolbar */}
+            <div className="w-16 flex flex-col items-center py-6 gap-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-200 dark:border-slate-800 z-50">
+                <div className="p-2.5 bg-primary-600 rounded-xl shadow-lg mb-4"><Droplets className="w-5 h-5 text-white" /></div>
 
-                <AnyMapContainer
-                    center={kazakhstanCenter}
-                    zoom={5}
-                    minZoom={4}
-                    maxZoom={18}
-                    className="h-full w-full"
-                    zoomControl={false}
-                    scrollWheelZoom={true}
-                >
-                    <MapController onMapReady={handleMapReady} />
+                <ToolBtn active={activeTool === 'pointer'} onClick={() => setActiveTool('pointer')} icon={MousePointer2} tip="Select" />
+                <ToolBtn active={activeTool === 'pencil'} onClick={() => setActiveTool('pencil')} icon={Pencil} tip="Edit Vertices" color="red" />
 
-                    <AnyTileLayer
-                        attribution='CARTO'
-                        url="https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                    />
+                <div className="w-8 h-px bg-slate-200 dark:bg-slate-700 my-2" />
 
-                    {visibleObjects.map(obj => {
-                        const isSelected = obj.id === selectedObjectId;
-                        const color = getObjectColor(obj, isSelected);
+                <ToolBtn icon={Plus} onClick={() => mapRef.current?.zoomIn()} tip="Zoom In" />
+                <ToolBtn icon={Minus} onClick={() => mapRef.current?.zoomOut()} tip="Zoom Out" />
+                <ToolBtn icon={Locate} onClick={() => mapRef.current?.setView(KZ_CENTER, 5)} tip="Reset" />
 
-                        return (
-                            <AnyGeoJSON
-                                key={obj.id}
-                                ref={(r: any) => {
-                                    if (r) layerRefs.current[obj.id] = r;
-                                    else delete layerRefs.current[obj.id];
-                                }}
-                                data={obj.geometry as GeoJSON.GeoJsonObject}
-                                style={() => ({
-                                    color: color,
-                                    weight: isSelected ? 4 : 2,
-                                    opacity: isSelected ? 1 : 0.8,
-                                    fillColor: color,
-                                    fillOpacity: isSelected ? 0.4 : 0.2
-                                })}
-                                eventHandlers={{
-                                    click: (e: any) => {
-                                        e.originalEvent?.stopPropagation?.();
-                                        handleObjectClick(obj);
-                                    }
-                                }}
-                            />
-                        );
-                    })}
-                </AnyMapContainer>
+                <div className="w-8 h-px bg-slate-200 dark:bg-slate-700 my-2" />
 
-                {/* Status Overlay */}
-                <div className="absolute top-4 right-4 z-[500] pointer-events-none">
-                    <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl text-xs shadow-xl">
-                        {loading ? (
-                            <span className="text-amber-500">Loading water data...</span>
-                        ) : error ? (
-                            <span className="text-red-500">Error: {error}</span>
-                        ) : (
-                            <>
-                                <span className="text-slate-500 dark:text-slate-400">
-                                    {activeTool === 'pointer' ? 'Select Mode' : 'Edit Mode'}
-                                </span>
-                                <span className="mx-2 text-slate-300 dark:text-slate-600">•</span>
-                                <span className="text-primary-500 font-medium">{visibleObjects.length}</span>
-                                <span className="text-slate-500 dark:text-slate-400 ml-1">objects</span>
-                                {hasChanges && (
-                                    <>
-                                        <span className="mx-2 text-slate-300 dark:text-slate-600">•</span>
-                                        <span className="text-amber-500">Unsaved changes</span>
-                                    </>
-                                )}
-                            </>
-                        )}
+                <ToolBtn icon={mapTheme === 'dark' ? Sun : Moon} onClick={() => setMapTheme(t => t === 'dark' ? 'light' : 'dark')} tip="Theme" />
+
+                <div className="flex-1" />
+
+                <button onClick={handleSave} disabled={!hasChanges} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${hasChanges ? 'bg-emerald-500 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                    {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                </button>
+            </div>
+
+            {/* Map */}
+            <div className="flex-1 relative">
+                {/* Top Bar */}
+                <div className="absolute top-4 left-4 right-4 flex items-center gap-4 z-[1000] pointer-events-none">
+                    <div className="w-72 pointer-events-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl flex items-center px-4 py-2">
+                        <Search className="w-4 h-4 text-slate-400" />
+                        <input type="text" placeholder="Search..." className="bg-transparent border-none focus:ring-0 text-sm w-full ml-2" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                    </div>
+                    <div className="flex-1" />
+                    <div className="pointer-events-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 shadow-xl flex items-center gap-3 text-xs font-medium">
+                        {fromCache && <span className="text-emerald-500 flex items-center gap-1"><Zap className="w-3.5 h-3.5" />Cached</span>}
+                        <span className="text-primary-500">{filteredData?.features?.length || 0} objects</span>
+                        {hasChanges && <span className="text-amber-500">• Unsaved</span>}
                     </div>
                 </div>
+
+                {/* Layer Panel */}
+                <div className="absolute bottom-6 left-4 z-[1000]">
+                    <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl p-2 shadow-xl">
+                        {Object.entries(TYPE_COLORS).map(([type, color]) => {
+                            const on = visibleTypes.has(type);
+                            return (
+                                <button key={type} onClick={() => setVisibleTypes(p => { const n = new Set(p); n.has(type) ? n.delete(type) : n.add(type); return n; })} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all text-xs ${on ? 'bg-slate-100 dark:bg-slate-800' : 'opacity-40'}`}>
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                                    <span className="capitalize">{type}</span>
+                                    {on ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <MapContainer center={KZ_CENTER} zoom={5} className="h-full w-full" zoomControl={false} preferCanvas>
+                    <MapEvents onLoad={m => { mapRef.current = m; m.on('zoomend', () => setZoom(m.getZoom())); }} />
+                    <MapBaseLayer theme={mapTheme} />
+                    {filteredData && (
+                        <GeoJSON
+                            key={`geo-${visibleTypes.size}-${zoom < 7}`}
+                            ref={geoJsonRef as any}
+                            data={filteredData}
+                            style={styleFeature}
+                            onEachFeature={onEachFeature}
+                        />
+                    )}
+                </MapContainer>
             </div>
 
-            {/* Persistent Right Panel */}
-            <div className={`
-                absolute top-0 right-0 h-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-[1000] transition-all duration-300
-                ${selectedObject ? 'w-96 translate-x-0' : 'w-80 translate-x-0'}
-            `}>
-                <RightPanel
-                    selectedObject={selectedObject}
-                    onClose={() => setSelectedObjectId(null)}
-                    onSave={handlePropertyChange}
-                />
+            {/* Right Panel */}
+            <div className={`bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl transition-all duration-300 z-50 overflow-hidden ${selectedId ? 'w-80' : 'w-0'}`}>
+                {selectedObject && (
+                    <div className="w-80 h-full flex flex-col p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-lg font-bold">Properties</h2>
+                            <button onClick={() => setSelectedId(null)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"><X className="w-5 h-5" /></button>
+                        </div>
+
+                        {activeTool === 'pencil' && (
+                            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400">
+                                Edit mode active. Drag vertices to modify geometry.
+                            </div>
+                        )}
+
+                        <div className="flex-1 space-y-4 overflow-y-auto">
+                            <Field label="Type" value={selectedObject.properties.object_type} />
+                            <Field label="Name (KZ)" value={selectedObject.properties.name_kz} editable onChange={() => setHasChanges(true)} />
+                            <Field label="Name (RU)" value={selectedObject.properties.name_ru} editable onChange={() => setHasChanges(true)} />
+                            <Field label="OSM ID" value={selectedObject.properties.osm_id} />
+                        </div>
+
+                        <button onClick={handleSave} disabled={!hasChanges} className={`w-full py-3 rounded-xl font-medium transition-all mt-4 ${hasChanges ? 'bg-primary-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                            {hasChanges ? 'Save Changes' : 'No Changes'}
+                        </button>
+                    </div>
+                )}
             </div>
+
+            {loading && (
+                <div className="absolute inset-0 bg-white/60 dark:bg-slate-950/60 backdrop-blur-sm z-[2000] flex flex-col items-center justify-center">
+                    <Loader2 className="w-10 h-10 text-primary-500 animate-spin mb-3" />
+                    <p className="font-medium">{fromCache ? 'Loading from cache...' : 'Loading data...'}</p>
+                </div>
+            )}
+
+            <style>{`
+                .map-tooltip { background: rgba(15,23,42,0.9) !important; border: none !important; border-radius: 8px !important; color: white !important; padding: 6px 10px !important; }
+                .leaflet-editing-icon { background: #ef4444 !important; border: 2px solid white !important; border-radius: 50% !important; width: 10px !important; height: 10px !important; margin: -5px 0 0 -5px !important; }
+            `}</style>
+        </div>
+    );
+}
+
+function ToolBtn({ active, icon: Icon, onClick, tip, color }: any) {
+    const colors = { red: 'bg-red-500 text-white shadow-red-500/30', primary: 'bg-primary-600 text-white shadow-primary-500/30' };
+    return (
+        <button onClick={onClick} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative ${active ? (colors[color as keyof typeof colors] || colors.primary) + ' shadow-lg' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+            <Icon className="w-5 h-5" />
+            <div className="absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-[3000]">{tip}</div>
+        </button>
+    );
+}
+
+function Field({ label, value, editable, onChange }: any) {
+    return (
+        <div>
+            <label className="text-xs font-medium text-slate-400 uppercase">{label}</label>
+            {editable ? (
+                <input type="text" defaultValue={value || ''} onChange={onChange} className="w-full mt-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm" />
+            ) : (
+                <div className="mt-1 text-sm font-medium capitalize">{value || '—'}</div>
+            )}
         </div>
     );
 }

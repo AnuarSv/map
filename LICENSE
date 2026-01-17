@@ -1,35 +1,40 @@
-WaterMap Pro Proprietary License
-Copyright (c) 2024-2025 WaterMap Authors. All Rights Reserved.
+WaterMap Proprietary License
+
+Copyright (c) 2024 WaterMap Development Team
+All Rights Reserved.
 
 TERMS AND CONDITIONS
 
-1. OWNERSHIP
-   This software and all associated intellectual property rights are owned 
-   exclusively by the WaterMap Authors.
+1. SOURCE CODE ACCESS
+   The source code of this software is made publicly available for viewing,
+   educational purposes, and personal non-commercial use only.
 
 2. RESTRICTIONS
-   Without prior written consent from the copyright holder, you may NOT:
-   - Copy, modify, merge, or distribute this software
-   - Sublicense or sell copies of this software
-   - Use this software for commercial purposes
-   - Reverse engineer, decompile, or disassemble this software
-   - Remove or alter any proprietary notices
+   You may NOT:
+   - Sell, sublicense, or commercially distribute this software
+   - Use this software for commercial purposes without written permission
+   - Redistribute modified or unmodified copies of this software
+   - Remove or alter any copyright notices
 
-3. PERMITTED USE
-   Use of this software is permitted only under a valid commercial license
-   agreement obtained from the copyright holder.
+3. DATABASE AND DATA
+   All database schemas, data files, and datasets included with this software
+   are proprietary and confidential. They may NOT be copied, extracted,
+   or used separately from this software.
 
-4. NO WARRANTY
-   THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS
-   OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+4. PERMITTED USE
+   You MAY:
+   - View and study the source code
+   - Run the software for personal, non-commercial evaluation
+   - Submit bug reports and suggestions
 
-5. LIMITATION OF LIABILITY
-   IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
-   LIABILITY ARISING FROM THE USE OF THIS SOFTWARE.
+5. COMMERCIAL LICENSING
+   For commercial use, redistribution rights, or licensing inquiries,
+   contact: [your-email@example.com]
 
-6. CONTACT
-   For licensing inquiries, contact: licensing@watermap.kz
+6. NO WARRANTY
+   THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND.
+   THE AUTHORS SHALL NOT BE LIABLE FOR ANY DAMAGES ARISING FROM THE
+   USE OF THIS SOFTWARE.
 
-This license is effective until terminated. Any violation automatically
-terminates your rights under this license.
+7. TERMINATION
+   This license terminates automatically if you violate any of its terms.

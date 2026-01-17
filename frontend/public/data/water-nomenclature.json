@@ -1,0 +1,98 @@
+{
+  "metadata": {
+    "source": "mapDocs nomenclature",
+    "country": "Kazakhstan",
+    "updated": "2026-01-17"
+  },
+  "basins": [
+    {
+      "id": "arctic",
+      "name_kz": "Солтүстік мұзды мұхит алабы",
+      "name_ru": "Бассейн Северного Ледовитого океана",
+      "name_en": "Arctic Ocean Basin"
+    },
+    {
+      "id": "caspian",
+      "name_kz": "Каспий теңізі алабы",
+      "name_ru": "Бассейн Каспийского моря",
+      "name_en": "Caspian Sea Basin"
+    },
+    {
+      "id": "aral",
+      "name_kz": "Арал теңізі алабы",
+      "name_ru": "Бассейн Аральского моря",
+      "name_en": "Aral Sea Basin"
+    },
+    {
+      "id": "balkhash",
+      "name_kz": "Балхаш-Алакөл алабы",
+      "name_ru": "Балхаш-Алакольский бассейн",
+      "name_en": "Balkhash-Alakol Basin"
+    },
+    {
+      "id": "internal",
+      "name_kz": "Ішкі алап",
+      "name_ru": "Внутренний бессточный бассейн",
+      "name_en": "Internal Drainage Basin"
+    }
+  ],
+  "rivers": [
+    {"name": "Ертіс", "name_ru": "Иртыш", "name_en": "Irtysh", "basin": "arctic", "type": "river", "major": true},
+    {"name": "Есіл", "name_ru": "Ишим", "name_en": "Ishim", "basin": "arctic", "type": "river", "major": true},
+    {"name": "Тобыл", "name_ru": "Тобол", "name_en": "Tobol", "basin": "arctic", "type": "river", "major": true},
+    {"name": "Жайық", "name_ru": "Урал", "name_en": "Ural", "basin": "caspian", "type": "river", "major": true},
+    {"name": "Жем", "name_ru": "Эмба", "name_en": "Emba", "basin": "caspian", "type": "river", "major": true},
+    {"name": "Сағыз", "name_ru": "Сагиз", "name_en": "Sagiz", "basin": "caspian", "type": "river"},
+    {"name": "Ойыл", "name_ru": "Уил", "name_en": "Uil", "basin": "caspian", "type": "river"},
+    {"name": "Сырдария", "name_ru": "Сырдарья", "name_en": "Syr Darya", "basin": "aral", "type": "river", "major": true},
+    {"name": "Шу", "name_ru": "Чу", "name_en": "Chu", "basin": "aral", "type": "river", "major": true},
+    {"name": "Талас", "name_ru": "Талас", "name_en": "Talas", "basin": "aral", "type": "river"},
+    {"name": "Арыс", "name_ru": "Арысь", "name_en": "Arys", "basin": "aral", "type": "river"},
+    {"name": "Іле", "name_ru": "Или", "name_en": "Ili", "basin": "balkhash", "type": "river", "major": true},
+    {"name": "Қаратал", "name_ru": "Каратал", "name_en": "Karatal", "basin": "balkhash", "type": "river"},
+    {"name": "Лепсі", "name_ru": "Лепсы", "name_en": "Lepsy", "basin": "balkhash", "type": "river"},
+    {"name": "Аягөз", "name_ru": "Аягуз", "name_en": "Ayaguz", "basin": "balkhash", "type": "river"},
+    {"name": "Тентек", "name_ru": "Тентек", "name_en": "Tentek", "basin": "balkhash", "type": "river"},
+    {"name": "Торғай", "name_ru": "Тургай", "name_en": "Turgay", "basin": "internal", "type": "river"},
+    {"name": "Сарысу", "name_ru": "Сарысу", "name_en": "Sarysu", "basin": "internal", "type": "river"},
+    {"name": "Нұра", "name_ru": "Нура", "name_en": "Nura", "basin": "internal", "type": "river"},
+    {"name": "Шар", "name_ru": "Чар", "name_en": "Char", "basin": "arctic", "type": "river"},
+    {"name": "Бұқтырма", "name_ru": "Бухтарма", "name_en": "Bukhtarma", "basin": "arctic", "type": "river"},
+    {"name": "Үлбі", "name_ru": "Ульба", "name_en": "Ulba", "basin": "arctic", "type": "river"},
+    {"name": "Күршім", "name_ru": "Курчум", "name_en": "Kurchum", "basin": "arctic", "type": "river"},
+    {"name": "Шарын", "name_ru": "Чарын", "name_en": "Charyn", "basin": "balkhash", "type": "river"},
+    {"name": "Көксу", "name_ru": "Коксу", "name_en": "Koksu", "basin": "balkhash", "type": "river"},
+    {"name": "Қаскелен", "name_ru": "Каскелен", "name_en": "Kaskelen", "basin": "balkhash", "type": "river"},
+    {"name": "Түрген", "name_ru": "Тургень", "name_en": "Turgen", "basin": "balkhash", "type": "river"}
+  ],
+  "lakes": [
+    {"name": "Балқаш", "name_ru": "Балхаш", "name_en": "Balkhash", "region": "center", "type": "lake", "major": true, "area_km2": 16400},
+    {"name": "Арал", "name_ru": "Арал", "name_en": "Aral Sea", "region": "south", "type": "lake", "major": true},
+    {"name": "Зайсан", "name_ru": "Зайсан", "name_en": "Zaysan", "region": "east", "type": "lake", "major": true},
+    {"name": "Алакөл", "name_ru": "Алаколь", "name_en": "Alakol", "region": "east", "type": "lake", "major": true},
+    {"name": "Теңіз", "name_ru": "Тенгиз", "name_en": "Tengiz", "region": "north", "type": "lake", "major": true},
+    {"name": "Марқакөл", "name_ru": "Маркаколь", "name_en": "Markakol", "region": "east", "type": "lake"},
+    {"name": "Сасықкөл", "name_ru": "Сасыкколь", "name_en": "Sasykol", "region": "east", "type": "lake"},
+    {"name": "Шалқар", "name_ru": "Шалкар", "name_en": "Shalkar", "region": "west", "type": "lake"},
+    {"name": "Қорғалжын", "name_ru": "Коргалжын", "name_en": "Korgalzhyn", "region": "center", "type": "lake"},
+    {"name": "Борабай", "name_ru": "Боровое", "name_en": "Burabay", "region": "north", "type": "lake"},
+    {"name": "Көлсай", "name_ru": "Кольсай", "name_en": "Kolsai", "region": "south", "type": "lake"},
+    {"name": "Қайынды", "name_ru": "Каинды", "name_en": "Kaindy", "region": "south", "type": "lake"},
+    {"name": "Үлкен Алматы", "name_ru": "Большое Алматинское", "name_en": "Big Almaty", "region": "south", "type": "lake"},
+    {"name": "Имантау", "name_ru": "Имантау", "name_en": "Imantau", "region": "north", "type": "lake"},
+    {"name": "Индер", "name_ru": "Индер", "name_en": "Inder", "region": "west", "type": "lake"},
+    {"name": "Сілетітеңіз", "name_ru": "Силетитениз", "name_en": "Siletiteniz", "region": "north", "type": "lake"}
+  ],
+  "reservoirs": [
+    {"name": "Қапшағай", "name_ru": "Капчагай", "name_en": "Kapshagai", "river": "Ili", "major": true},
+    {"name": "Бұқтырма", "name_ru": "Бухтарма", "name_en": "Bukhtarma", "river": "Irtysh", "major": true},
+    {"name": "Шүлбі", "name_ru": "Шульба", "name_en": "Shulba", "river": "Irtysh"},
+    {"name": "Шардара", "name_ru": "Шардара", "name_en": "Shardara", "river": "Syr Darya", "major": true},
+    {"name": "Бөген", "name_ru": "Боген", "name_en": "Bogen", "river": "Bogen"},
+    {"name": "Тасөткел", "name_ru": "Тасоткель", "name_en": "Tasotkol", "river": "Chu"},
+    {"name": "Сергеев", "name_ru": "Сергеевское", "name_en": "Sergeevka", "river": "Ishim"},
+    {"name": "Вячеслав", "name_ru": "Вячеславское", "name_en": "Vyacheslav", "river": "Ishim"},
+    {"name": "Самарқан", "name_ru": "Самаркандское", "name_en": "Samarkand", "river": "Nura"},
+    {"name": "Қаратамар", "name_ru": "Каратомар", "name_en": "Karatomar", "river": "Tobol"}
+  ]
+}
