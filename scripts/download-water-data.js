@@ -1,148 +1,223 @@
 #!/usr/bin/env node
 /**
- * Download Kazakhstan Water Features from OpenStreetMap
- * 
- * This script queries the Overpass API for rivers, lakes, and reservoirs
- * in Kazakhstan and saves them as GeoJSON.
+ * Smart Download of Major Water Features
+ * Targets specific key regions to ensure reliability and speed.
  */
 
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 
-const OVERPASS_API = 'https://overpass-api.de/api/interpreter';
+const OUTPUT_PATH = path.join(__dirname, '../frontend/public/data/kazakhstan-water.geojson');
+const TMP_DIR = path.join(__dirname, 'tmp_chunks');
 
-// Kazakhstan bounding box (approximate)
-// [south, west, north, east]
-const BBOX = '40.5,46.5,55.5,87.5';
+// Ensure tmp dir exists
+if (!fs.existsSync(TMP_DIR)) {
+    fs.mkdirSync(TMP_DIR, { recursive: true });
+}
 
-// Query for major water features in Kazakhstan
-const OVERPASS_QUERY = `
-[out:json][timeout:300];
-(
-  // Major rivers
-  way["waterway"="river"]["name"](${BBOX});
-  relation["waterway"="river"]["name"](${BBOX});
-  
-  // Lakes
-  way["natural"="water"]["water"="lake"]["name"](${BBOX});
-  relation["natural"="water"]["water"="lake"]["name"](${BBOX});
-  
-  // Reservoirs
-  way["natural"="water"]["water"="reservoir"]["name"](${BBOX});
-  relation["natural"="water"]["water"="reservoir"]["name"](${BBOX});
-  
-  // Large water bodies without specific type
-  way["natural"="water"]["name"](${BBOX});
-);
-out body;
->;
-out skel qt;
-`;
+function queryOverpass(query) {
+    return new Promise((resolve, reject) => {
+        const options = {
+            hostname: 'overpass-api.de',
+            path: '/api/interpreter',
+            method: 'POST',
+            timeout: 30000, // 30s client timeout
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'WaterMap-Downloader/1.0'
+            }
+        };
 
-async function downloadWaterData() {
-    console.log('Downloading Kazakhstan water data from OpenStreetMap...');
-    console.log('This may take a few minutes...\n');
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                if (res.statusCode === 429) {
+                    reject(new Error('Rate Limited (429)'));
+                } else if (res.statusCode !== 200) {
+                    reject(new Error(`Status ${res.statusCode}: ${data.substring(0, 100)}`));
+                } else {
+                    try {
+                        resolve(JSON.parse(data));
+                    } catch (e) {
+                        reject(new Error('Invalid JSON'));
+                    }
+                }
+            });
+        });
+        
+        req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('Client Timeout (30s)'));
+        });
+        
+        req.on('error', (e) => reject(new Error(e.message)));
+        req.write(`data=${encodeURIComponent(query)}`);
+        req.end();
+    });
+}
+
+function generateKeyRegions() {
+    return [
+        // Caspian Sea
+        { id: 'caspian_north', bbox: '44.0,46.5,47.0,53.0', desc: 'Caspian Sea (North)' },
+        { id: 'caspian_east', bbox: '43.0,50.0,45.0,54.0', desc: 'Caspian Sea (East)' },
+        
+        // Lake Balkhash
+        { id: 'balkhash_west', bbox: '45.0,73.0,46.5,76.0', desc: 'Lake Balkhash (West)' },
+        { id: 'balkhash_east', bbox: '46.0,76.0,47.0,79.5', desc: 'Lake Balkhash (East)' },
+        
+        // Alakol
+        { id: 'alakol', bbox: '45.5,80.5,46.5,82.5', desc: 'Alakol Lakes' },
+        
+        // Kapchagay
+        { id: 'kapchagay', bbox: '43.5,77.0,44.2,78.5', desc: 'Kapchagay Reservoir' },
+        
+        // Major Rivers
+        { id: 'irtysh_pavlodar', bbox: '52.0,76.0,53.0,77.5', desc: 'Irtysh (Pavlodar)' },
+        { id: 'irtysh_oskemen', bbox: '49.5,82.0,50.5,83.0', desc: 'Irtysh (Oskemen)' },
+        { id: 'ural_atyrau', bbox: '46.5,51.0,47.5,52.0', desc: 'Ural (Atyrau)' },
+        { id: 'ural_uralsk', bbox: '51.0,51.0,51.5,51.5', desc: 'Ural (Uralsk)' },
+        { id: 'ishim_astana', bbox: '51.0,71.0,51.5,71.8', desc: 'Ishim (Astana)' },
+        { id: 'tobol_kostanay', bbox: '53.0,63.0,53.5,64.0', desc: 'Tobol (Kostanay)' },
+        
+        // Aral Sea
+        { id: 'aral_sea', bbox: '45.5,59.0,47.0,62.0', desc: 'North Aral Sea' },
+        
+        // Bukhtarma
+        { id: 'bukhtarma', bbox: '49.0,83.0,49.8,85.0', desc: 'Bukhtarma Reservoir' },
+        
+        // Shardara
+        { id: 'shardara', bbox: '40.8,67.5,41.5,68.5', desc: 'Shardara Reservoir' }
+    ];
+}
+
+async function downloadChunk(chunk, retries = 3) {
+    const cacheFile = path.join(TMP_DIR, `${chunk.id}.json`);
+    
+    if (fs.existsSync(cacheFile)) {
+        console.log(`Skipping ${chunk.desc} (already exists)`);
+        return JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+    }
+
+    console.log(`Downloading ${chunk.desc} ...`);
+
+    const query = `
+        [out:json][timeout:180];
+        (
+            way["waterway"~"river|canal|stream"]["name"](${chunk.bbox});
+            way["natural"="water"]["name"](${chunk.bbox});
+            relation["natural"="water"]["name"](${chunk.bbox});
+        );
+        out geom;
+    `;
 
     try {
-        const response = await fetch(OVERPASS_API, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `data=${encodeURIComponent(OVERPASS_QUERY)}`
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const data = await queryOverpass(query);
+        fs.writeFileSync(cacheFile, JSON.stringify(data));
+        return data;
+    } catch (e) {
+        if (retries > 0) {
+            const delay = e.message.includes('429') ? 10000 : 3000;
+            console.log(`  Error ${chunk.desc}: ${e.message}. Retrying...`);
+            await new Promise(r => setTimeout(r, delay));
+            return downloadChunk(chunk, retries - 1);
         }
-
-        const data = await response.json();
-        console.log(`Received ${data.elements.length} elements from OSM`);
-
-        // Convert OSM data to GeoJSON
-        const geojson = osmToGeoJSON(data);
-        console.log(`Converted to ${geojson.features.length} GeoJSON features`);
-
-        // Save to file
-        const outputPath = path.join(__dirname, '../frontend/public/data/kazakhstan-water.geojson');
-        fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-        fs.writeFileSync(outputPath, JSON.stringify(geojson, null, 2));
-
-        console.log(`\nSaved to: ${outputPath}`);
-        console.log(`File size: ${(fs.statSync(outputPath).size / 1024 / 1024).toFixed(2)} MB`);
-
-    } catch (error) {
-        console.error('Error downloading data:', error.message);
-        process.exit(1);
+        console.error(`  FAILED ${chunk.desc}: ${e.message}`);
+        return { elements: [] };
     }
 }
 
-function osmToGeoJSON(osmData) {
-    const nodes = {};
-    const ways = {};
+function processElements(elements) {
     const features = [];
+    const seen = new Set();
 
-    // Index nodes by ID
-    for (const el of osmData.elements) {
-        if (el.type === 'node') {
-            nodes[el.id] = [el.lon, el.lat];
+    for (const el of elements) {
+        if (seen.has(el.id)) continue;
+        seen.add(el.id);
+
+        if (!el.tags || !el.tags.name) continue;
+
+        let geometry = null;
+        let type = 'LineString';
+
+        if (el.geometry) {
+            const coords = el.geometry.map(p => [p.lon, p.lat]);
+            
+            if (coords.some(p => isNaN(p[0]) || isNaN(p[1]))) continue;
+
+            const isClosed = coords.length > 2 && 
+                coords[0][0] === coords[coords.length-1][0] && 
+                coords[0][1] === coords[coords.length-1][1];
+                
+            const isWaterArea = el.tags.natural === 'water' || el.tags.water;
+            
+            if (isWaterArea && isClosed) {
+                type = 'Polygon';
+                geometry = { type: 'Polygon', coordinates: [coords] };
+            } else {
+                geometry = { type: 'LineString', coordinates: coords };
+            }
         }
-    }
 
-    // Process ways
-    for (const el of osmData.elements) {
-        if (el.type === 'way' && el.nodes && el.tags) {
-            const coords = el.nodes.map(id => nodes[id]).filter(Boolean);
-            if (coords.length < 2) continue;
-
-            const isPolygon = coords.length > 2 &&
-                coords[0][0] === coords[coords.length - 1][0] &&
-                coords[0][1] === coords[coords.length - 1][1];
-
-            const objectType = getObjectType(el.tags);
-
+        if (geometry) {
             features.push({
                 type: 'Feature',
                 properties: {
                     id: el.id,
-                    name_kz: el.tags['name:kk'] || el.tags.name || '',
-                    name_ru: el.tags['name:ru'] || el.tags.name || '',
-                    name_en: el.tags['name:en'] || el.tags.name || '',
-                    object_type: objectType,
                     osm_id: el.id,
-                    waterway: el.tags.waterway,
-                    natural: el.tags.natural,
-                    water: el.tags.water
+                    name_kz: el.tags['name:kk'] || el.tags.name,
+                    name_ru: el.tags['name:ru'] || el.tags.name,
+                    name_en: el.tags['name:en'] || '',
+                    object_type: el.tags.waterway === 'river' ? 'river' : 'lake'
                 },
-                geometry: isPolygon && objectType !== 'river' ? {
-                    type: 'Polygon',
-                    coordinates: [coords]
-                } : {
-                    type: 'LineString',
-                    coordinates: coords
-                }
+                geometry: geometry
             });
         }
     }
-
-    return {
-        type: 'FeatureCollection',
-        metadata: {
-            source: 'OpenStreetMap via Overpass API',
-            downloaded: new Date().toISOString(),
-            bbox: BBOX,
-            total: features.length
-        },
-        features
-    };
+    return features;
 }
 
-function getObjectType(tags) {
-    if (tags.waterway === 'river') return 'river';
-    if (tags.waterway === 'canal') return 'canal';
-    if (tags.water === 'lake') return 'lake';
-    if (tags.water === 'reservoir') return 'reservoir';
-    if (tags.natural === 'water') return 'lake';
-    if (tags.natural === 'glacier') return 'glacier';
-    return 'lake';
+async function main() {
+    try {
+        const chunks = generateKeyRegions();
+        console.log(`Targeting ${chunks.length} key water regions.`);
+        
+        let allElements = [];
+        
+        for (let i = 0; i < chunks.length; i++) {
+            const result = await downloadChunk(chunks[i]);
+            if (result.elements) {
+                allElements = allElements.concat(result.elements);
+            }
+            
+            console.log(`Progress: ${i+1}/${chunks.length} | Total Elements: ${allElements.length}`);
+            await new Promise(r => setTimeout(r, 1000));
+        }
+        
+        console.log(`\nProcessing ${allElements.length} elements...`);
+        
+        const uniqueElements = Array.from(new Map(allElements.map(item => [item.id, item])).values());
+        const features = processElements(uniqueElements);
+        console.log(`Generated ${features.length} GeoJSON features.`);
+
+        const geojson = {
+            type: 'FeatureCollection',
+            metadata: {
+                generated: new Date().toISOString(),
+                count: features.length
+            },
+            features: features
+        };
+
+        fs.writeFileSync(OUTPUT_PATH, JSON.stringify(geojson));
+        console.log(`SUCCESS! Saved to ${OUTPUT_PATH}`);
+        
+    } catch (err) {
+        console.error('FATAL ERROR:', err);
+        process.exit(1);
+    }
 }
 
-downloadWaterData();
+main();

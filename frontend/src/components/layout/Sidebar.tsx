@@ -9,7 +9,8 @@ import {
     Database,
     ShieldAlert,
     Menu,
-    Bell
+    Bell,
+    Droplets
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { ThemeSwitcher } from '../ui/ThemeSwitcher';
@@ -99,6 +100,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         <path d="M2 12h20" />
                     </svg>
                     {!collapsed && <span>Public Map</span>}
+                </Link>
+
+                {/* Water Directory */}
+                <Link to="/water-directory" className={navItemClass(isActive('/water-directory'))}>
+                    <Droplets className="w-5 h-5 flex-shrink-0" />
+                    {!collapsed && <span>Water Directory</span>}
                 </Link>
 
                 {isAdmin && (

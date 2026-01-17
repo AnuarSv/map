@@ -1,8 +1,18 @@
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useState, useEffect, useMemo } from 'react';
-import type { WaterObject } from '../types/waterObject';
 import { X, ExternalLink } from 'lucide-react';
+
+// Local interface for map display (subset of WaterObject)
+interface MapWaterObject {
+    id: number;
+    canonical_id: string;
+    name_kz: string;
+    name_ru: string;
+    name_en: string;
+    object_type: string;
+    geometry: any;
+}
 
 const kazakhstanCenter: [number, number] = [48.0, 67.0];
 
@@ -14,7 +24,7 @@ const AnyGeoJSON = GeoJSON as any;
 export default function PublicMapPage() {
     const [waterData, setWaterData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [selectedObject, setSelectedObject] = useState<WaterObject | null>(null);
+    const [selectedObject, setSelectedObject] = useState<MapWaterObject | null>(null);
 
     // Load water data
     useEffect(() => {
@@ -34,7 +44,7 @@ export default function PublicMapPage() {
         loadData();
     }, []);
 
-    const waterObjects = useMemo<WaterObject[]>(() => {
+    const waterObjects = useMemo<MapWaterObject[]>(() => {
         if (!waterData?.features) return [];
         return waterData.features.map((f: any, idx: number) => ({
             id: f.properties.id || idx,
@@ -73,21 +83,34 @@ export default function PublicMapPage() {
                     url="https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                 />
 
-                {waterObjects.map(obj => (
+                {waterData && (
                     <AnyGeoJSON
-                        key={obj.id}
-                        data={obj.geometry}
-                        style={{
-                            color: getColor(obj.object_type),
+                        data={waterData}
+                        style={(feature: any) => ({
+                            color: getColor(feature?.properties?.object_type),
                             weight: 2,
                             opacity: 0.8,
                             fillOpacity: 0.3
-                        }}
-                        eventHandlers={{
-                            click: () => setSelectedObject(obj)
+                        })}
+                        onEachFeature={(feature: any, layer: any) => {
+                            layer.on({
+                                click: () => {
+                                    // Construct the object expected by the popup
+                                    const props = feature.properties;
+                                    setSelectedObject({
+                                        id: props.id || props.osm_id,
+                                        canonical_id: props.osm_id ? `osm-${props.osm_id}` : `osm-${props.id}`,
+                                        name_kz: props.name_kz || 'Unnamed',
+                                        name_ru: props.name_ru || 'Unnamed',
+                                        name_en: props.name_en || '',
+                                        object_type: props.object_type || 'lake',
+                                        geometry: feature.geometry
+                                    });
+                                }
+                            });
                         }}
                     />
-                ))}
+                )}
             </AnyMapContainer>
 
             {/* Overlay Header */}

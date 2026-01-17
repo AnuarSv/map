@@ -17,12 +17,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <TopBar sidebarCollapsed={collapsed} />
 
             <main className={`
-        pt-20 px-6 pb-6 min-h-screen transition-all duration-300
-        ${collapsed ? 'pl-26' : 'pl-70'}
+        pt-16 min-h-screen transition-all duration-300
+        ${collapsed ? 'pl-20' : 'pl-64'}
       `}>
-                <div className="max-w-7xl mx-auto">
-                    {children}
-                </div>
+                {children}
             </main>
         </div>
     );
