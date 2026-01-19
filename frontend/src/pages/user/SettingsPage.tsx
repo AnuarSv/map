@@ -18,10 +18,10 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="space-y-6 max-w-2xl">
+        <div className="space-y-6 max-w-4xl mx-auto">
             <div>
-                <h1 className="text-2xl font-bold text-slate-100">Settings</h1>
-                <p className="text-slate-400 mt-1">Manage your account and preferences</p>
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Настройки</h1>
+                <p className="text-slate-500 dark:text-slate-400 mt-1">Управление аккаунтом и предпочтениями</p>
             </div>
 
             {/* Profile Section */}
@@ -112,8 +112,8 @@ export default function SettingsPage() {
                     <button
                         onClick={copyApiKey}
                         className={`px-3 py-2.5 rounded-lg transition-colors ${copied
-                                ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                             }`}
                     >
                         {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}

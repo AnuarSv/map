@@ -1,0 +1,365 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 1,
+                "name_kz": "Астана",
+                "name_ru": "Астана",
+                "population": 1350000,
+                "is_capital": true,
+                "is_regional": false
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    71.43,
+                    51.13
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 2,
+                "name_kz": "Алматы",
+                "name_ru": "Алматы",
+                "population": 2100000,
+                "is_capital": false,
+                "is_regional": false
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    76.95,
+                    43.24
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 3,
+                "name_kz": "Шымкент",
+                "name_ru": "Шымкент",
+                "population": 1150000,
+                "is_capital": false,
+                "is_regional": false
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    69.60,
+                    42.32
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 4,
+                "name_kz": "Қарағанды",
+                "name_ru": "Караганда",
+                "population": 497000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    73.10,
+                    49.80
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 5,
+                "name_kz": "Ақтөбе",
+                "name_ru": "Актобе",
+                "population": 500000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    57.21,
+                    50.28
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 6,
+                "name_kz": "Тараз",
+                "name_ru": "Тараз",
+                "population": 357000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    71.37,
+                    42.90
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 7,
+                "name_kz": "Павлодар",
+                "name_ru": "Павлодар",
+                "population": 331000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    76.95,
+                    52.29
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 8,
+                "name_kz": "Өскемен",
+                "name_ru": "Усть-Каменогорск",
+                "population": 330000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    82.62,
+                    49.95
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 9,
+                "name_kz": "Семей",
+                "name_ru": "Семей",
+                "population": 322000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    80.23,
+                    50.41
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 10,
+                "name_kz": "Атырау",
+                "name_ru": "Атырау",
+                "population": 290000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    51.92,
+                    47.10
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 11,
+                "name_kz": "Қостанай",
+                "name_ru": "Костанай",
+                "population": 243000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    63.63,
+                    53.21
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 12,
+                "name_kz": "Қызылорда",
+                "name_ru": "Кызылорда",
+                "population": 237000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    64.68,
+                    44.84
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 13,
+                "name_kz": "Орал",
+                "name_ru": "Уральск",
+                "population": 230000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    51.23,
+                    51.23
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 14,
+                "name_kz": "Петропавл",
+                "name_ru": "Петропавловск",
+                "population": 218000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    69.14,
+                    54.87
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 15,
+                "name_kz": "Ақтау",
+                "name_ru": "Актау",
+                "population": 191000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    51.16,
+                    43.65
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 16,
+                "name_kz": "Түркістан",
+                "name_ru": "Туркестан",
+                "population": 175000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    68.25,
+                    43.30
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 17,
+                "name_kz": "Көкшетау",
+                "name_ru": "Кокшетау",
+                "population": 145000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    69.39,
+                    53.28
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 18,
+                "name_kz": "Талдықорған",
+                "name_ru": "Талдыкорган",
+                "population": 142000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    78.37,
+                    45.02
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 19,
+                "name_kz": "Жезқазған",
+                "name_ru": "Жезказган",
+                "population": 90000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    67.71,
+                    47.78
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 20,
+                "name_kz": "Қонаев",
+                "name_ru": "Конаев",
+                "population": 85000,
+                "is_capital": false,
+                "is_regional": true
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    77.00,
+                    44.05
+                ]
+            }
+        }
+    ]
+}
