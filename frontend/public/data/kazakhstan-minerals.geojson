@@ -1,0 +1,325 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 1,
+                "name_kz": "Теңіз мұнай кен орны",
+                "name_ru": "Тенгиз (нефть)",
+                "type": "oil"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    53.47,
+                    46.15
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 2,
+                "name_kz": "Қашаған мұнай кен орны",
+                "name_ru": "Кашаган (нефть)",
+                "type": "oil"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    51.50,
+                    46.35
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 3,
+                "name_kz": "Қарашығанақ",
+                "name_ru": "Карачаганак (газ)",
+                "type": "gas"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    50.07,
+                    50.08
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 4,
+                "name_kz": "Жаңаөзен мұнайы",
+                "name_ru": "Жанаозен (нефть)",
+                "type": "oil"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    52.86,
+                    43.35
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 5,
+                "name_kz": "Қарағанды көмірі",
+                "name_ru": "Карагандинский угольный бассейн",
+                "type": "coal"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    73.10,
+                    49.80
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 6,
+                "name_kz": "Екібастұз көмірі",
+                "name_ru": "Экибастузский угольный бассейн",
+                "type": "coal"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    75.32,
+                    51.73
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 7,
+                "name_kz": "Жезқазған мысы",
+                "name_ru": "Жезказган (медь)",
+                "type": "copper"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    67.71,
+                    47.78
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 8,
+                "name_kz": "Балқаш мысы",
+                "name_ru": "Балхаш (медь)",
+                "type": "copper"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    74.95,
+                    46.84
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 9,
+                "name_kz": "Соколов-Сарыбай темір рудасы",
+                "name_ru": "Соколовско-Сарбайское (железо)",
+                "type": "iron"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    63.10,
+                    52.46
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 10,
+                "name_kz": "Лисаков темір рудасы",
+                "name_ru": "Лисаковское (железо)",
+                "type": "iron"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    62.50,
+                    52.55
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 11,
+                "name_kz": "Риддер қорғасын-мырышы",
+                "name_ru": "Риддер (полиметаллы)",
+                "type": "polymetals"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    83.52,
+                    50.35
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 12,
+                "name_kz": "Зыряновск қорғасын-мырышы",
+                "name_ru": "Зыряновск (полиметаллы)",
+                "type": "polymetals"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    84.27,
+                    49.73
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 13,
+                "name_kz": "Хромтау хромы",
+                "name_ru": "Хромтау (хром)",
+                "type": "chrome"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    58.44,
+                    50.25
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 14,
+                "name_kz": "Жітіқара алтыны",
+                "name_ru": "Житикара (золото)",
+                "type": "gold"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    61.20,
+                    52.19
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 15,
+                "name_kz": "Васильков алтыны",
+                "name_ru": "Васильковское (золото)",
+                "type": "gold"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    69.50,
+                    53.50
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 16,
+                "name_kz": "Шұ-Сарысу уран провинциясы",
+                "name_ru": "Шу-Сарысуйская (уран)",
+                "type": "uranium"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    68.00,
+                    44.50
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 17,
+                "name_kz": "Сырдария уран провинциясы",
+                "name_ru": "Сырдарьинская (уран)",
+                "type": "uranium"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    66.50,
+                    44.00
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 18,
+                "name_kz": "Ақтау марганец",
+                "name_ru": "Мангышлакский марганец",
+                "type": "manganese"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    52.00,
+                    43.80
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 19,
+                "name_kz": "Шалқар бокситі",
+                "name_ru": "Торгайские бокситы",
+                "type": "bauxite"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    60.00,
+                    49.50
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": 20,
+                "name_kz": "Жаңатас фосфориті",
+                "name_ru": "Жанатас (фосфориты)",
+                "type": "phosphate"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    69.80,
+                    43.56
+                ]
+            }
+        }
+    ]
+}

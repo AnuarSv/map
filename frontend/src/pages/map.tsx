@@ -1,18 +1,8 @@
-import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import { useState, useEffect, useMemo } from 'react';
+import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import { X, ExternalLink } from 'lucide-react';
-
-// Local interface for map display (subset of WaterObject)
-interface MapWaterObject {
-    id: number;
-    canonical_id: string;
-    name_kz: string;
-    name_ru: string;
-    name_en: string;
-    object_type: string;
-    geometry: any;
-}
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 const kazakhstanCenter: [number, number] = [48.0, 67.0];
 
@@ -23,38 +13,37 @@ const AnyGeoJSON = GeoJSON as any;
 
 export default function PublicMapPage() {
     const [waterData, setWaterData] = useState<any>(null);
+    const [regionsData, setRegionsData] = useState<any>(null);
+    const [citiesData, setCitiesData] = useState<any>(null);
+    const [mineralsData, setMineralsData] = useState<any>(null);
+    const [selectedObject, setSelectedObject] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [selectedObject, setSelectedObject] = useState<MapWaterObject | null>(null);
 
-    // Load water data
     useEffect(() => {
-        async function loadData() {
+        const loadData = async () => {
             try {
-                const res = await fetch('/data/kazakhstan-water.geojson');
-                if (res.ok) {
-                    const data = await res.json();
-                    setWaterData(data);
-                }
-            } catch (err) {
-                console.error('Failed to load water data:', err);
+                const [water, regions, cities, minerals] = await Promise.all([
+                    fetch('/data/kazakhstan-water.geojson').then(res => res.json()),
+                    fetch('/data/kazakhstan-regions.geojson').then(res => res.json()),
+                    fetch('/data/kazakhstan-cities.geojson').then(res => res.json()),
+                    fetch('/data/kazakhstan-minerals.geojson').then(res => res.json())
+                ]);
+                setWaterData(water);
+                setRegionsData(regions);
+                setCitiesData(cities);
+                setMineralsData(minerals);
+            } catch (error) {
+                console.error('Error loading map data:', error);
             } finally {
                 setLoading(false);
             }
-        }
+        };
         loadData();
     }, []);
 
-    const waterObjects = useMemo<MapWaterObject[]>(() => {
-        if (!waterData?.features) return [];
-        return waterData.features.map((f: any, idx: number) => ({
-            id: f.properties.id || idx,
-            canonical_id: f.properties.osm_id ? `osm-${f.properties.osm_id}` : `osm-${f.properties.id}`,
-            name_kz: f.properties.name_kz || 'Unnamed',
-            name_ru: f.properties.name_ru || 'Unnamed',
-            name_en: f.properties.name_en || '',
-            object_type: f.properties.object_type || 'lake',
-            geometry: f.geometry
-        }));
+    const waterObjectsCount = useMemo(() => {
+        if (!waterData?.features) return 0;
+        return waterData.features.length;
     }, [waterData]);
 
     const getColor = (type: string) => {
@@ -77,11 +66,24 @@ export default function PublicMapPage() {
                 zoom={5}
                 className="h-full w-full"
                 zoomControl={false}
+                preferCanvas={true}
             >
                 <AnyTileLayer
                     attribution='CARTO'
                     url="https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                 />
+
+                {regionsData && (
+                    <AnyGeoJSON
+                        data={regionsData}
+                        style={{
+                            color: '#64748b',
+                            weight: 1,
+                            fillOpacity: 0.1,
+                            dashArray: '3'
+                        }}
+                    />
+                )}
 
                 {waterData && (
                     <AnyGeoJSON
@@ -95,7 +97,6 @@ export default function PublicMapPage() {
                         onEachFeature={(feature: any, layer: any) => {
                             layer.on({
                                 click: () => {
-                                    // Construct the object expected by the popup
                                     const props = feature.properties;
                                     setSelectedObject({
                                         id: props.id || props.osm_id,
@@ -111,14 +112,53 @@ export default function PublicMapPage() {
                         }}
                     />
                 )}
+
+                {citiesData && (
+                    <AnyGeoJSON
+                        data={citiesData}
+                        pointToLayer={(feature: any, latlng: any) => {
+                            return L.circleMarker(latlng, {
+                                radius: feature.properties.is_capital ? 6 : 4,
+                                fillColor: "#ffffff",
+                                color: "#000000",
+                                weight: 2,
+                                opacity: 1,
+                                fillOpacity: 1
+                            }).bindTooltip(feature.properties.name_ru, {
+                                permanent: true,
+                                direction: 'top',
+                                className: 'city-label'
+                            });
+                        }}
+                    />
+                )}
+
+                {mineralsData && (
+                    <AnyGeoJSON
+                        data={mineralsData}
+                        pointToLayer={(feature: any, latlng: any) => {
+                            return L.circleMarker(latlng, {
+                                radius: 4,
+                                fillColor: "#eab308",
+                                color: "#854d0e",
+                                weight: 1,
+                                opacity: 1,
+                                fillOpacity: 0.8
+                            }).bindTooltip(feature.properties.name_ru, {
+                                permanent: false,
+                                direction: 'top'
+                            });
+                        }}
+                    />
+                )}
             </AnyMapContainer>
 
             {/* Overlay Header */}
             <div className="absolute top-4 left-4 z-[1000]">
                 <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl shadow-lg">
-                    <h1 className="text-slate-900 dark:text-white font-bold">WaterMap Public</h1>
+                    <h1 className="text-slate-900 dark:text-white font-bold">География Казахстана</h1>
                     <p className="text-slate-500 dark:text-slate-400 text-xs">
-                        {loading ? 'Loading...' : `${waterObjects.length} water objects`}
+                        {loading ? 'Загрузка...' : `${regionsData?.features?.length || 0} областей, ${citiesData?.features?.length || 0} городов, ${waterObjectsCount} водных объектов`}
                     </p>
                 </div>
             </div>
@@ -126,15 +166,19 @@ export default function PublicMapPage() {
             {/* Legend */}
             <div className="absolute top-4 right-4 z-[1000]">
                 <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 px-4 py-3 rounded-xl shadow-lg">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Legend</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Легенда</h3>
                     <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
                         <div className="flex items-center gap-2">
-                            <div className="w-4 h-0.5 bg-blue-500 rounded" />
-                            <span>Rivers</span>
+                            <div className="w-3 h-3 bg-white border-2 border-black rounded-full" />
+                            <span>Города</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 bg-cyan-500/30 border border-cyan-500 rounded" />
-                            <span>Lakes</span>
+                            <div className="w-3 h-3 bg-blue-500/30 border border-blue-500 rounded" />
+                            <span>Водные объекты</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 bg-yellow-500/80 border border-yellow-700 rounded-full" />
+                            <span>Минералы</span>
                         </div>
                     </div>
                 </div>
@@ -164,7 +208,7 @@ export default function PublicMapPage() {
 
                         <div className="flex items-center gap-4 border-t border-slate-200 dark:border-slate-700 pt-3 mt-3">
                             <a
-                                href={`https://www.openstreetmap.org/way/${selectedObject.canonical_id?.replace('osm-', '')}`}
+                                href={`https://www.openstreetmap.org/way/${selectedObject.canonical_id?.split('-')[1]}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-primary-500 text-sm flex items-center gap-1 hover:underline"

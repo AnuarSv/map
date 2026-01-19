@@ -12,6 +12,11 @@ import UsersPage from './pages/admin/UsersPage';
 import ReviewPage from './pages/admin/ReviewPage';
 import ApiManagementPage from './pages/admin/ApiManagementPage';
 
+// Quiz Pages
+import QuizHomePage from './pages/quiz/QuizHomePage';
+import QuizPlayerPage from './pages/quiz/QuizPlayerPage';
+import ContourMapPage from './pages/quiz/ContourMapPage';
+
 // User Pages
 import UserDashboard from './pages/user/DashboardPage';
 import MyReviewsPage from './pages/user/MyReviewsPage';
@@ -47,6 +52,12 @@ export default function App() {
                 {/* Public */}
                 <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
 
+                {/* Quiz Routes */}
+                <Route path="/quiz" element={<ProtectedRoute><QuizHomePage /></ProtectedRoute>} />
+                <Route path="/quiz/category/:category" element={<ProtectedRoute><QuizPlayerPage /></ProtectedRoute>} />
+                <Route path="/quiz/play/:quizId" element={<ProtectedRoute><QuizPlayerPage /></ProtectedRoute>} />
+                <Route path="/quiz/contour" element={<ProtectedRoute><ContourMapPage /></ProtectedRoute>} />
+
                 {/* Public Map */}
                 <Route path="/map" element={<ProtectedRoute><PublicMapPage /></ProtectedRoute>} />
 
@@ -67,8 +78,8 @@ export default function App() {
                 <Route path="/admin/api" element={<ProtectedRoute roles={['admin']}><ApiManagementPage /></ProtectedRoute>} />
 
                 {/* Redirects */}
-                <Route path="/" element={<Navigate to="/login" />} />
-                <Route path="*" element={<Navigate to="/user/dashboard" />} />
+                <Route path="/" element={<Navigate to="/quiz" />} />
+                <Route path="*" element={<Navigate to="/quiz" />} />
             </Routes>
         </BrowserRouter>
     );
