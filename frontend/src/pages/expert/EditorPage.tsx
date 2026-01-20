@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -15,80 +15,44 @@ import {
     EyeOff,
     X,
     Droplets,
-    Search,
     Loader2,
     Plus,
     Minus,
-    Zap
+    Map as MapIcon,
+    Building2,
+    Gem,
+    Layers
 } from 'lucide-react';
 import { MapContainer as MapContainerOrig, GeoJSON as GeoJSONOrig } from 'react-leaflet';
 
 const MapContainer = MapContainerOrig as any;
 const GeoJSON = GeoJSONOrig as any;
 
-// --- IndexedDB Cache ---
-const DB_NAME = 'watermap-cache';
-const STORE_NAME = 'geojson';
-const CACHE_KEY = 'kazakhstan-water';
-
-async function openDB(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, 1);
-        req.onerror = () => reject(req.error);
-        req.onsuccess = () => resolve(req.result);
-        req.onupgradeneeded = () => {
-            req.result.createObjectStore(STORE_NAME);
-        };
-    });
-}
-
-async function getCachedData(): Promise<any | null> {
-    try {
-        const db = await openDB();
-        return new Promise((resolve) => {
-            const tx = db.transaction(STORE_NAME, 'readonly');
-            const store = tx.objectStore(STORE_NAME);
-            const req = store.get(CACHE_KEY);
-            req.onsuccess = () => resolve(req.result || null);
-            req.onerror = () => resolve(null);
-        });
-    } catch { return null; }
-}
-
-async function setCachedData(data: any): Promise<void> {
-    try {
-        const db = await openDB();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        tx.objectStore(STORE_NAME).put(data, CACHE_KEY);
-    } catch { /* ignore */ }
-}
-
-// --- Configuration ---
-const TILE_LAYERS = {
-    dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-};
-
-const TYPE_COLORS: Record<string, string> = {
-    river: '#3b82f6', canal: '#60a5fa', lake: '#06b6d4',
-    reservoir: '#0891b2', glacier: '#a5f3fc', spring: '#22d3ee'
-};
-
 const KZ_CENTER: [number, number] = [48.0, 67.0];
 
-// --- Components ---
-const MapBaseLayer = ({ theme }: { theme: 'dark' | 'light' }) => {
-    const map = useMap();
-    const layerRef = useRef<L.TileLayer | null>(null);
+const CATEGORIES = [
+    { id: 'water', name: 'Вода', icon: Droplets, color: 'text-blue-500' },
+    { id: 'regions', name: 'Регионы', icon: MapIcon, color: 'text-purple-500' },
+    { id: 'cities', name: 'Города', icon: Building2, color: 'text-emerald-500' },
+    { id: 'minerals', name: 'Ресурсы', icon: Gem, color: 'text-amber-500' },
+];
 
-    useEffect(() => {
-        if (layerRef.current) map.removeLayer(layerRef.current);
-        layerRef.current = L.tileLayer(TILE_LAYERS[theme], { maxZoom: 19 }).addTo(map);
-        return () => { if (layerRef.current) map.removeLayer(layerRef.current); };
-    }, [theme, map]);
-
-    return null;
-};
+const MINERAL_TYPES = [
+    { id: 'oil', name: 'Нефть' },
+    { id: 'gas', name: 'Газ' },
+    { id: 'coal', name: 'Уголь' },
+    { id: 'iron', name: 'Железо' },
+    { id: 'copper', name: 'Медь' },
+    { id: 'gold', name: 'Золото' },
+    { id: 'uranium', name: 'Уран' },
+    { id: 'chrome', name: 'Хром' },
+    { id: 'polymetals', name: 'Полиметаллы' },
+    { id: 'zinc', name: 'Цинк' },
+    { id: 'manganese', name: 'Марганец' },
+    { id: 'rare_earth', name: 'Редкие земли' },
+    { id: 'titanium', name: 'Титан' },
+    { id: 'antimony', name: 'Сурьма' },
+];
 
 const MapEvents = ({ onLoad }: { onLoad: (m: L.Map) => void }) => {
     const map = useMap();
@@ -98,215 +62,257 @@ const MapEvents = ({ onLoad }: { onLoad: (m: L.Map) => void }) => {
 
 export default function EditorPage() {
     const mapRef = useRef<L.Map | null>(null);
-    const geoJsonRef = useRef<L.GeoJSON | null>(null);
-    const editLayerRef = useRef<L.Layer | null>(null);
-    const [zoom, setZoom] = useState(5);
-    const [fullData, setFullData] = useState<any>(null);
+    const [activeCategory, setActiveCategory] = useState('water');
     const [loading, setLoading] = useState(true);
-    const [fromCache, setFromCache] = useState(false);
     const [mapTheme, setMapTheme] = useState<'dark' | 'light'>('dark');
-    const [activeTool, setActiveTool] = useState<'pointer' | 'pencil'>('pointer');
+    const [activeTool, setActiveTool] = useState<'pointer' | 'pencil' | 'place-mineral'>('pointer');
+    const [selectedMineral, setSelectedMineral] = useState<string | null>(null);
     const [selectedId, setSelectedId] = useState<number | string | null>(null);
-    const [visibleTypes, setVisibleTypes] = useState<Set<string>>(new Set(['river', 'lake', 'reservoir', 'canal']));
-    const [searchQuery, setSearchQuery] = useState('');
+    const [visibleLayers, setVisibleLayers] = useState<Set<string>>(new Set(['water', 'regions', 'cities', 'minerals']));
     const [hasChanges, setHasChanges] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    // Load with cache-first strategy
-    useEffect(() => {
-        let cancelled = false;
+    const [waterData, setWaterData] = useState<any>(null);
+    const [regionsData, setRegionsData] = useState<any>(null);
+    const [citiesData, setCitiesData] = useState<any>(null);
+    const [mineralsData, setMineralsData] = useState<any>(null);
 
-        async function load() {
+    useEffect(() => {
+        const load = async () => {
             setLoading(true);
-
-            // 1. Try cache first (instant)
-            const cached = await getCachedData();
-            if (cached && !cancelled) {
-                setFullData(cached);
-                setFromCache(true);
-                setLoading(false);
-            }
-
-            // 2. Fetch fresh in background
             try {
-                const res = await fetch('/data/kazakhstan-water.geojson');
-                const data = await res.json();
-                if (!cancelled) {
-                    setFullData(data);
-                    setLoading(false);
-                    setCachedData(data); // Update cache
-                    setFromCache(false);
-                }
-            } catch {
-                if (!cancelled && !cached) setLoading(false);
-            }
-        }
-
+                const [water, regions, cities, minerals] = await Promise.all([
+                    fetch('/data/kazakhstan-water-filtered.geojson').then(res => res.json()),
+                    fetch('/data/kazakhstan-regions.geojson').then(res => res.json()),
+                    fetch('/data/kazakhstan-cities.geojson').then(res => res.json()),
+                    fetch('/data/kazakhstan-minerals.geojson').then(res => res.json()),
+                ]);
+                setWaterData(water);
+                setRegionsData(regions);
+                setCitiesData(cities);
+                setMineralsData(minerals);
+            } catch (e) { console.error(e); }
+            setLoading(false);
+        };
         load();
-        return () => { cancelled = true; };
     }, []);
 
-    // Filter data
-    const filteredData = useMemo(() => {
-        if (!fullData?.features) return null;
-        return {
-            type: 'FeatureCollection',
-            features: fullData.features.filter((f: any) => {
-                const type = f.properties?.object_type || 'lake';
-                if (!visibleTypes.has(type)) return false;
-                if (zoom < 7 && (type === 'river' || type === 'canal')) {
-                    return f.properties?.name;
-                }
-                return true;
-            })
-        };
-    }, [fullData, visibleTypes, zoom]);
+    const handleDragStart = (e: React.DragEvent, type: string) => {
+        e.dataTransfer.setData('mineralType', type);
+        setSelectedMineral(type);
+    };
 
-    // Enable editing on selected layer
-    useEffect(() => {
-        if (!geoJsonRef.current) return;
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        const type = e.dataTransfer.getData('mineralType');
+        if (!type || !mapRef.current) return;
 
-        // Disable previous editing
-        if (editLayerRef.current && (editLayerRef.current as any).editing) {
-            (editLayerRef.current as any).editing.disable();
-            editLayerRef.current = null;
-        }
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
 
-        if (activeTool === 'pencil' && selectedId) {
-            geoJsonRef.current.eachLayer((layer: any) => {
-                const id = layer.feature?.properties?.id || layer.feature?.properties?.osm_id;
-                if (id === selectedId && layer.editing) {
-                    layer.editing.enable();
-                    editLayerRef.current = layer;
+        const latlng = mapRef.current.containerPointToLatLng([x, y]);
 
-                    // Listen for edits
-                    layer.on('edit', () => {
-                        setHasChanges(true);
-                    });
-                }
-            });
-        }
-    }, [activeTool, selectedId]);
-
-    // Style features
-    const styleFeature = useCallback((f: any) => {
-        const id = f?.properties?.id || f?.properties?.osm_id;
-        const isSelected = id === selectedId;
-        const type = f?.properties?.object_type || 'lake';
-        const color = TYPE_COLORS[type] || '#94a3b8';
-
-        return {
-            color: isSelected ? (activeTool === 'pencil' ? '#ef4444' : '#f59e0b') : color,
-            weight: isSelected ? 4 : 1.5,
-            opacity: isSelected ? 1 : 0.6,
-            fillOpacity: isSelected ? 0.4 : 0.1
-        };
-    }, [selectedId, activeTool]);
-
-    const onEachFeature = useCallback((feature: any, layer: L.Layer) => {
-        layer.on({
-            click: (e: any) => {
-                L.DomEvent.stopPropagation(e);
-                const id = feature.properties?.id || feature.properties?.osm_id;
-                setSelectedId(id);
-                if (mapRef.current) {
-                    mapRef.current.fitBounds((layer as any).getBounds(), { padding: [100, 100], maxZoom: 12 });
-                }
+        const newMineral = {
+            type: 'Feature',
+            properties: {
+                id: `new-${Date.now()}`,
+                name_ru: `Новое месторождение (${type})`,
+                type: type
+            },
+            geometry: {
+                type: 'Point',
+                coordinates: [latlng.lng, latlng.lat]
             }
-        });
+        };
 
-        const name = feature.properties?.name_kz || feature.properties?.name_ru || 'Unnamed';
-        layer.bindTooltip(`<b>${name}</b>`, { sticky: true, className: 'map-tooltip' });
-    }, []);
+        setMineralsData((prev: any) => ({
+            ...prev,
+            features: [...prev.features, newMineral]
+        }));
+        setHasChanges(true);
+        setActiveTool('pointer');
+        setSelectedMineral(null);
+    };
 
-    const selectedObject = useMemo(() => {
-        if (!selectedId || !fullData?.features) return null;
-        return fullData.features.find((f: any) => (f.properties?.id || f.properties?.osm_id) === selectedId);
-    }, [fullData, selectedId]);
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
+
+    const handleMapClick = (e: L.LeafletMouseEvent) => {
+        if (activeTool === 'place-mineral' && selectedMineral) {
+            const newMineral = {
+                type: 'Feature',
+                properties: {
+                    id: `new-${Date.now()}`,
+                    name_ru: `Новое месторождение (${selectedMineral})`,
+                    type: selectedMineral
+                },
+                geometry: {
+                    type: 'Point',
+                    coordinates: [e.latlng.lng, e.latlng.lat]
+                }
+            };
+            setMineralsData((prev: any) => ({
+                ...prev,
+                features: [...prev.features, newMineral]
+            }));
+            setHasChanges(true);
+            setActiveTool('pointer');
+        }
+    };
 
     const handleSave = async () => {
         setSaving(true);
-
-        // Get edited geometry if any
-        if (editLayerRef.current) {
-            const edited = (editLayerRef.current as any).toGeoJSON();
-            console.log('Edited geometry:', edited);
-            // Here you would send to backend API
-        }
-
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 1000));
         setHasChanges(false);
         setSaving(false);
     };
 
+    const selectedObject = useMemo(() => {
+        if (!selectedId) return null;
+        const all = [
+            ...(waterData?.features || []),
+            ...(regionsData?.features || []),
+            ...(citiesData?.features || []),
+            ...(mineralsData?.features || [])
+        ];
+        return all.find((f: any) => (f.properties?.id || f.properties?.osm_id) === selectedId);
+    }, [selectedId, waterData, regionsData, citiesData, mineralsData]);
+
     return (
-        <div className="h-[calc(100vh-4rem)] w-full flex bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden">
-            {/* Left Toolbar */}
-            <div className="w-16 flex flex-col items-center py-6 gap-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-200 dark:border-slate-800 z-50">
-                <div className="p-2.5 bg-primary-600 rounded-xl shadow-lg mb-4"><Droplets className="w-5 h-5 text-white" /></div>
+        <div className="h-screen w-full flex bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden">
+            {/* Sidebar Left */}
+            <div className="w-80 flex bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 flex-col">
+                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <h2 className="font-extrabold text-xl flex items-center gap-2">
+                        <Layers className="w-6 h-6 text-emerald-600" />
+                        Редактор
+                    </h2>
+                    <div className="flex gap-1">
+                        <ToolBtn icon={mapTheme === 'dark' ? Sun : Moon} onClick={() => setMapTheme(t => t === 'dark' ? 'light' : 'dark')} tip="Смена темы" />
+                    </div>
+                </div>
 
-                <ToolBtn active={activeTool === 'pointer'} onClick={() => setActiveTool('pointer')} icon={MousePointer2} tip="Select" />
-                <ToolBtn active={activeTool === 'pencil'} onClick={() => setActiveTool('pencil')} icon={Pencil} tip="Edit Vertices" color="red" />
+                <div className="flex-1 overflow-y-auto">
+                    <div className="grid grid-cols-4 border-b border-slate-200 dark:border-slate-800">
+                        {CATEGORIES.map(cat => (
+                            <button
+                                key={cat.id}
+                                onClick={() => setActiveCategory(cat.id)}
+                                className={`flex flex-col items-center py-4 transition-all border-b-2 ${activeCategory === cat.id ? 'border-emerald-600 bg-emerald-50/30' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                            >
+                                <cat.icon className={`w-5 h-5 ${cat.color}`} />
+                                <span className="text-[10px] mt-1 font-bold">{cat.name}</span>
+                            </button>
+                        ))}
+                    </div>
 
-                <div className="w-8 h-px bg-slate-200 dark:bg-slate-700 my-2" />
+                    <div className="p-6">
+                        {activeCategory === 'minerals' ? (
+                            <div className="space-y-4">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Палитра ресурсов</h3>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {MINERAL_TYPES.map(m => (
+                                        <button
+                                            key={m.id}
+                                            draggable="true"
+                                            onDragStart={(e) => handleDragStart(e, m.id)}
+                                            onClick={() => {
+                                                setSelectedMineral(m.id);
+                                                setActiveTool('place-mineral');
+                                            }}
+                                            className={`p-3 rounded-xl border-2 flex flex-col items-center gap-2 transition-all cursor-grab active:cursor-grabbing ${selectedMineral === m.id && activeTool === 'place-mineral' ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' : 'border-slate-100 dark:border-slate-800 hover:border-slate-300'}`}
+                                        >
+                                            <img src={`/icons/minerals/${m.id}.svg`} className="w-10 h-10" alt={m.name} />
+                                            <span className="text-[10px] font-bold">{m.name}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Управление слоем</h3>
+                                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <span className="font-bold text-sm">Отображение</span>
+                                        <button
+                                            onClick={() => setVisibleLayers(p => { const n = new Set(p); n.has(activeCategory) ? n.delete(activeCategory) : n.add(activeCategory); return n; })}
+                                            className={`p-2 rounded-lg transition-all ${visibleLayers.has(activeCategory) ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}
+                                        >
+                                            {visibleLayers.has(activeCategory) ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                    <button
+                                        className={`w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${activeTool === 'pencil' ? 'bg-emerald-600 text-white' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600'}`}
+                                        onClick={() => setActiveTool(activeTool === 'pencil' ? 'pointer' : 'pencil')}
+                                    >
+                                        <Pencil className="w-3.5 h-3.5" /> Ред. геометрию
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
 
-                <ToolBtn icon={Plus} onClick={() => mapRef.current?.zoomIn()} tip="Zoom In" />
-                <ToolBtn icon={Minus} onClick={() => mapRef.current?.zoomOut()} tip="Zoom Out" />
-                <ToolBtn icon={Locate} onClick={() => mapRef.current?.setView(KZ_CENTER, 5)} tip="Reset" />
-
-                <div className="w-8 h-px bg-slate-200 dark:bg-slate-700 my-2" />
-
-                <ToolBtn icon={mapTheme === 'dark' ? Sun : Moon} onClick={() => setMapTheme(t => t === 'dark' ? 'light' : 'dark')} tip="Theme" />
-
-                <div className="flex-1" />
-
-                <button onClick={handleSave} disabled={!hasChanges} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${hasChanges ? 'bg-emerald-500 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
-                    {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                </button>
+                <div className="p-6 border-t border-slate-200 dark:border-slate-800">
+                    <button
+                        onClick={handleSave}
+                        disabled={!hasChanges || saving}
+                        className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${hasChanges ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}
+                    >
+                        {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                        Сохранить все
+                    </button>
+                </div>
             </div>
 
-            {/* Map */}
-            <div className="flex-1 relative">
-                {/* Top Bar */}
-                <div className="absolute top-4 left-4 right-4 flex items-center gap-4 z-[1000] pointer-events-none">
-                    <div className="w-72 pointer-events-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl flex items-center px-4 py-2">
-                        <Search className="w-4 h-4 text-slate-400" />
-                        <input type="text" placeholder="Search..." className="bg-transparent border-none focus:ring-0 text-sm w-full ml-2" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-                    </div>
-                    <div className="flex-1" />
-                    <div className="pointer-events-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 shadow-xl flex items-center gap-3 text-xs font-medium">
-                        {fromCache && <span className="text-emerald-500 flex items-center gap-1"><Zap className="w-3.5 h-3.5" />Cached</span>}
-                        <span className="text-primary-500">{filteredData?.features?.length || 0} objects</span>
-                        {hasChanges && <span className="text-amber-500">• Unsaved</span>}
-                    </div>
-                </div>
-
-                {/* Layer Panel */}
-                <div className="absolute bottom-6 left-4 z-[1000]">
-                    <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl p-2 shadow-xl">
-                        {Object.entries(TYPE_COLORS).map(([type, color]) => {
-                            const on = visibleTypes.has(type);
-                            return (
-                                <button key={type} onClick={() => setVisibleTypes(p => { const n = new Set(p); n.has(type) ? n.delete(type) : n.add(type); return n; })} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all text-xs ${on ? 'bg-slate-100 dark:bg-slate-800' : 'opacity-40'}`}>
-                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-                                    <span className="capitalize">{type}</span>
-                                    {on ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                                </button>
-                            );
-                        })}
+            {/* Map Area */}
+            <div
+                className="flex-1 relative"
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+            >
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none">
+                    <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-full px-6 py-2 shadow-xl pointer-events-auto flex items-center gap-3">
+                        <div className="flex gap-2 pr-3 border-r border-slate-200 dark:border-slate-700">
+                            <ToolBtn active={activeTool === 'pointer'} onClick={() => setActiveTool('pointer')} icon={MousePointer2} tip="Выбор" />
+                            <ToolBtn active={activeTool === 'pencil'} onClick={() => setActiveTool('pencil')} icon={Pencil} tip="Вершины" />
+                        </div>
+                        <div className="flex gap-2">
+                            <ToolBtn icon={Plus} onClick={() => mapRef.current?.zoomIn()} tip="Приблизить" />
+                            <ToolBtn icon={Minus} onClick={() => mapRef.current?.zoomOut()} tip="Отдалить" />
+                            <ToolBtn icon={Locate} onClick={() => mapRef.current?.setView(KZ_CENTER, 5)} tip="Сброс" />
+                        </div>
                     </div>
                 </div>
 
-                <MapContainer center={KZ_CENTER} zoom={5} className="h-full w-full" zoomControl={false} preferCanvas>
-                    <MapEvents onLoad={m => { mapRef.current = m; m.on('zoomend', () => setZoom(m.getZoom())); }} />
-                    <MapBaseLayer theme={mapTheme} />
-                    {filteredData && (
+                <MapContainer center={KZ_CENTER} zoom={5} className="h-full w-full" zoomControl={false} attributionControl={false} preferCanvas>
+                    <MapEvents onLoad={m => { mapRef.current = m; m.on('click', handleMapClick as any); }} />
+                    <TileLayer url={mapTheme === 'dark' ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'} />
+
+                    {visibleLayers.has('regions') && regionsData && (
+                        <GeoJSON data={regionsData} style={{ color: '#64748b', weight: 1, fillOpacity: 0.1 }} />
+                    )}
+                    {visibleLayers.has('water') && waterData && (
+                        <GeoJSON data={waterData} style={{ color: '#3b82f6', weight: 2, fillOpacity: 0.3 }} />
+                    )}
+                    {visibleLayers.has('cities') && citiesData && (
                         <GeoJSON
-                            key={`geo-${visibleTypes.size}-${zoom < 7}`}
-                            ref={geoJsonRef as any}
-                            data={filteredData}
-                            style={styleFeature}
-                            onEachFeature={onEachFeature}
+                            data={citiesData}
+                            pointToLayer={(_f: any, ll: any) => L.circleMarker(ll, { radius: 4, fillColor: '#fff', color: '#000', weight: 2, fillOpacity: 1 })}
+                        />
+                    )}
+                    {visibleLayers.has('minerals') && mineralsData && (
+                        <GeoJSON
+                            key={`minerals-${mineralsData.features.length}`}
+                            data={mineralsData}
+                            pointToLayer={(f: any, ll: any) => {
+                                const type = f.properties?.type || 'gold';
+                                return L.marker(ll, {
+                                    icon: L.icon({ iconUrl: `/icons/minerals/${type}.svg`, iconSize: [24, 24], iconAnchor: [12, 12] })
+                                }).on('click', () => setSelectedId(f.properties?.id || f.properties?.osm_id));
+                            }}
                         />
                     )}
                 </MapContainer>
@@ -315,66 +321,64 @@ export default function EditorPage() {
             {/* Right Panel */}
             <div className={`bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl transition-all duration-300 z-50 overflow-hidden ${selectedId ? 'w-80' : 'w-0'}`}>
                 {selectedObject && (
-                    <div className="w-80 h-full flex flex-col p-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-bold">Properties</h2>
-                            <button onClick={() => setSelectedId(null)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"><X className="w-5 h-5" /></button>
+                    <div className="w-80 h-full p-6 flex flex-col">
+                        <div className="flex items-center justify-between mb-8">
+                            <h2 className="text-lg font-extrabold tracking-tight">Свойства</h2>
+                            <button onClick={() => setSelectedId(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl">
+                                <X className="w-5 h-5 text-slate-400" />
+                            </button>
                         </div>
-
-                        {activeTool === 'pencil' && (
-                            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400">
-                                Edit mode active. Drag vertices to modify geometry.
-                            </div>
-                        )}
-
-                        <div className="flex-1 space-y-4 overflow-y-auto">
-                            <Field label="Type" value={selectedObject.properties.object_type} />
-                            <Field label="Name (KZ)" value={selectedObject.properties.name_kz} editable onChange={() => setHasChanges(true)} />
-                            <Field label="Name (RU)" value={selectedObject.properties.name_ru} editable onChange={() => setHasChanges(true)} />
-                            <Field label="OSM ID" value={selectedObject.properties.osm_id} />
+                        <div className="flex-1 space-y-6">
+                            <Field label="ID" value={selectedId} />
+                            <Field label="Название (RU)" value={selectedObject.properties.name_ru} editable />
+                            <Field label="Тип" value={selectedObject.properties.type || selectedObject.properties.object_type} />
                         </div>
-
-                        <button onClick={handleSave} disabled={!hasChanges} className={`w-full py-3 rounded-xl font-medium transition-all mt-4 ${hasChanges ? 'bg-primary-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
-                            {hasChanges ? 'Save Changes' : 'No Changes'}
-                        </button>
                     </div>
                 )}
             </div>
 
             {loading && (
-                <div className="absolute inset-0 bg-white/60 dark:bg-slate-950/60 backdrop-blur-sm z-[2000] flex flex-col items-center justify-center">
-                    <Loader2 className="w-10 h-10 text-primary-500 animate-spin mb-3" />
-                    <p className="font-medium">{fromCache ? 'Loading from cache...' : 'Loading data...'}</p>
+                <div className="fixed inset-0 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md z-[3000] flex flex-col items-center justify-center">
+                    <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mb-4" />
+                    <p className="font-bold text-slate-900 dark:text-white uppercase tracking-widest text-xs">Загрузка данных...</p>
                 </div>
             )}
-
-            <style>{`
-                .map-tooltip { background: rgba(15,23,42,0.9) !important; border: none !important; border-radius: 8px !important; color: white !important; padding: 6px 10px !important; }
-                .leaflet-editing-icon { background: #ef4444 !important; border: 2px solid white !important; border-radius: 50% !important; width: 10px !important; height: 10px !important; margin: -5px 0 0 -5px !important; }
-            `}</style>
         </div>
     );
 }
 
-function ToolBtn({ active, icon: Icon, onClick, tip, color }: any) {
-    const colors = { red: 'bg-red-500 text-white shadow-red-500/30', primary: 'bg-primary-600 text-white shadow-primary-500/30' };
+function ToolBtn({ active, icon: Icon, onClick, tip }: any) {
     return (
-        <button onClick={onClick} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative ${active ? (colors[color as keyof typeof colors] || colors.primary) + ' shadow-lg' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+        <button
+            onClick={onClick}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative ${active ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        >
             <Icon className="w-5 h-5" />
-            <div className="absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-[3000]">{tip}</div>
+            <div className="absolute top-full mt-3 px-2 py-1 bg-slate-900 text-white text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-[3000]">{tip}</div>
         </button>
     );
 }
 
-function Field({ label, value, editable, onChange }: any) {
+function Field({ label, value, editable }: any) {
     return (
         <div>
-            <label className="text-xs font-medium text-slate-400 uppercase">{label}</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">{label}</label>
             {editable ? (
-                <input type="text" defaultValue={value || ''} onChange={onChange} className="w-full mt-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm" />
+                <input type="text" className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 font-bold" defaultValue={value} />
             ) : (
-                <div className="mt-1 text-sm font-medium capitalize">{value || '—'}</div>
+                <div className="px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 font-mono text-sm border border-transparent">{value}</div>
             )}
         </div>
     );
+}
+
+function TileLayer({ url }: { url: string }) {
+    const map = useMap();
+    const lRef = useRef<L.TileLayer | null>(null);
+    useEffect(() => {
+        if (lRef.current) map.removeLayer(lRef.current);
+        lRef.current = L.tileLayer(url).addTo(map);
+        return () => { if (lRef.current) map.removeLayer(lRef.current); };
+    }, [url, map]);
+    return null;
 }

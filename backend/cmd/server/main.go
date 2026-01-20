@@ -17,6 +17,7 @@ import (
 	"watermap/internal/infrastructure/config"
 	"watermap/internal/infrastructure/database"
 	"watermap/internal/infrastructure/validator"
+	"watermap/internal/usecase/feedback"
 )
 
 func main() {
@@ -35,6 +36,10 @@ func main() {
 	// Initialize repositories
 	userRepo := postgres.NewUserRepo(pool)
 	waterObjectRepo := postgres.NewWaterObjectRepo(pool)
+	feedbackRepo := postgres.NewFeedbackRepository(pool)
+
+	// Initialize usecases
+	feedbackUC := feedback.NewUseCase(feedbackRepo)
 
 	// Initialize validators
 	geomValidator := validator.NewGeometryValidator()
@@ -46,6 +51,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(userRepo, cfg.JWTSecret)
 	waterObjectHandler := handler.NewWaterObjectHandler(waterObjectRepo, geomValidator)
 	adminHandler := handler.NewAdminHandler(waterObjectRepo, userRepo)
+	feedbackHandler := handler.NewFeedbackHandler(feedbackUC)
 
 	// Create Gin router
 	gin.SetMode(gin.ReleaseMode)
@@ -115,6 +121,9 @@ func main() {
 			admin.GET("/users", adminHandler.GetUsers)
 			admin.PUT("/users/:id/role", adminHandler.UpdateUserRole)
 		}
+
+		// Feedback routes
+		api.POST("/feedback", feedbackHandler.Submit)
 	}
 
 	// Create server

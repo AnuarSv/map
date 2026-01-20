@@ -189,6 +189,7 @@ export default function QuizPlayerPage() {
                     zoom={5}
                     className="h-full w-full bg-slate-100"
                     zoomControl={false}
+                    attributionControl={false}
                     preferCanvas={true}
                 >
                     <MapLayer />
@@ -225,19 +226,24 @@ export default function QuizPlayerPage() {
                     )}
                 </MapContainer>
 
-                {/* Feedback */}
+                {/* Feedback Banner */}
                 {answered && (
-                    <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-6 z-[1000] border ${isCorrect ? 'bg-white border-emerald-100 text-emerald-700' : 'bg-white border-red-100 text-red-600'}`}>
-                        <div className={`p-2 rounded-full ${isCorrect ? 'bg-emerald-100' : 'bg-red-100'}`}>
-                            {isCorrect ? <CheckCircle className="w-8 h-8" /> : <XCircle className="w-8 h-8" />}
+                    <div className="absolute inset-x-0 bottom-0 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex justify-center z-[2000] animate-in slide-in-from-bottom duration-300">
+                        <div className={`w-full max-w-2xl px-8 py-5 rounded-3xl shadow-2xl flex items-center gap-6 border backdrop-blur-xl ${isCorrect ? 'bg-white/95 dark:bg-slate-900/95 border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400' : 'bg-white/95 dark:bg-slate-900/95 border-red-100 dark:border-red-800 text-red-600 dark:text-red-400'}`}>
+                            <div className={`p-3 rounded-2xl ${isCorrect ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                                {isCorrect ? <CheckCircle className="w-8 h-8" /> : <XCircle className="w-8 h-8" />}
+                            </div>
+                            <div className="flex-1">
+                                <div className="font-black text-2xl leading-tight">{isCorrect ? 'Верно!' : 'Ошибка!'}</div>
+                                {!isCorrect && <div className="text-sm text-slate-500 dark:text-slate-400 font-bold mt-1 uppercase tracking-wide">Правильный ответ подсвечен</div>}
+                            </div>
+                            <button
+                                onClick={nextQuestion}
+                                className="px-8 py-4 bg-slate-900 dark:bg-emerald-600 text-white rounded-2xl font-black hover:scale-105 active:scale-95 transition-all flex items-center gap-3 shadow-xl shadow-black/20"
+                            >
+                                ДАЛЕЕ <ArrowRight className="w-6 h-6" />
+                            </button>
                         </div>
-                        <div>
-                            <div className="font-extrabold text-xl">{isCorrect ? 'Верно!' : 'Ошибка!'}</div>
-                            {!isCorrect && <div className="text-sm text-slate-500 font-medium">Правильный ответ подсвечен зеленым</div>}
-                        </div>
-                        <button onClick={nextQuestion} className="ml-4 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg">
-                            Далее <ArrowRight className="w-5 h-5" />
-                        </button>
                     </div>
                 )}
             </div>

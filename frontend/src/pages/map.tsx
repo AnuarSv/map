@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
-import { X, ExternalLink } from 'lucide-react';
+import { X, ExternalLink, AlertTriangle } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { FeedbackModal } from '../components/FeedbackModal';
 
 const kazakhstanCenter: [number, number] = [48.0, 67.0];
 
@@ -18,12 +19,14 @@ export default function PublicMapPage() {
     const [mineralsData, setMineralsData] = useState<any>(null);
     const [selectedObject, setSelectedObject] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+    const [isDark, setIsDark] = useState(true);
 
     useEffect(() => {
         const loadData = async () => {
             try {
                 const [water, regions, cities, minerals] = await Promise.all([
-                    fetch('/data/kazakhstan-water.geojson').then(res => res.json()),
+                    fetch('/data/kazakhstan-water-filtered.geojson').then(res => res.json()),
                     fetch('/data/kazakhstan-regions.geojson').then(res => res.json()),
                     fetch('/data/kazakhstan-cities.geojson').then(res => res.json()),
                     fetch('/data/kazakhstan-minerals.geojson').then(res => res.json())
@@ -39,6 +42,12 @@ export default function PublicMapPage() {
             }
         };
         loadData();
+
+        const checkTheme = () => setIsDark(document.documentElement.classList.contains('dark'));
+        checkTheme();
+        const observer = new MutationObserver(checkTheme);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
     }, []);
 
     const waterObjectsCount = useMemo(() => {
@@ -60,17 +69,20 @@ export default function PublicMapPage() {
     };
 
     return (
-        <div className="h-[calc(100vh-4rem)] w-full bg-slate-100 dark:bg-slate-950 relative">
+        <div className="h-screen w-full bg-slate-100 dark:bg-slate-950 relative">
             <AnyMapContainer
                 center={kazakhstanCenter}
                 zoom={5}
                 className="h-full w-full"
                 zoomControl={false}
+                attributionControl={false}
                 preferCanvas={true}
             >
                 <AnyTileLayer
-                    attribution='CARTO'
-                    url="https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    url={isDark
+                        ? "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                        : "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                    }
                 />
 
                 {regionsData && (
@@ -119,13 +131,13 @@ export default function PublicMapPage() {
                         pointToLayer={(feature: any, latlng: any) => {
                             return L.circleMarker(latlng, {
                                 radius: feature.properties.is_capital ? 6 : 4,
-                                fillColor: "#ffffff",
-                                color: "#000000",
+                                fillColor: isDark ? "#ffffff" : "#0f172a",
+                                color: isDark ? "#000000" : "#ffffff",
                                 weight: 2,
                                 opacity: 1,
                                 fillOpacity: 1
                             }).bindTooltip(feature.properties.name_ru, {
-                                permanent: true,
+                                permanent: false,
                                 direction: 'top',
                                 className: 'city-label'
                             });
@@ -137,13 +149,19 @@ export default function PublicMapPage() {
                     <AnyGeoJSON
                         data={mineralsData}
                         pointToLayer={(feature: any, latlng: any) => {
-                            return L.circleMarker(latlng, {
-                                radius: 4,
-                                fillColor: "#eab308",
-                                color: "#854d0e",
-                                weight: 1,
-                                opacity: 1,
-                                fillOpacity: 0.8
+                            const type = feature.properties.type || 'gold';
+                            const iconUrl = `/icons/minerals/${type}.svg`;
+
+                            const mineralIcon = L.icon({
+                                iconUrl: iconUrl,
+                                iconSize: [24, 24],
+                                iconAnchor: [12, 12],
+                                popupAnchor: [0, -12],
+                                tooltipAnchor: [0, -12]
+                            });
+
+                            return L.marker(latlng, {
+                                icon: mineralIcon
                             }).bindTooltip(feature.properties.name_ru, {
                                 permanent: false,
                                 direction: 'top'
@@ -169,7 +187,7 @@ export default function PublicMapPage() {
                     <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Легенда</h3>
                     <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
                         <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 bg-white border-2 border-black rounded-full" />
+                            <div className="w-3 h-3 bg-slate-900 dark:bg-white border-2 border-white dark:border-black rounded-full" />
                             <span>Города</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -177,7 +195,7 @@ export default function PublicMapPage() {
                             <span>Водные объекты</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 bg-yellow-500/80 border border-yellow-700 rounded-full" />
+                            <img src="/icons/minerals/oil.svg" className="w-4 h-4" alt="" />
                             <span>Минералы</span>
                         </div>
                     </div>
@@ -187,38 +205,53 @@ export default function PublicMapPage() {
             {/* Object Detail Popup */}
             {selectedObject && (
                 <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-md px-4">
-                    <div className="bg-white dark:bg-slate-900 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-2xl relative">
+                    <div className="bg-white dark:bg-slate-900 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-2xl relative animate-in slide-in-from-bottom-5 duration-200">
                         <button
                             onClick={() => setSelectedObject(null)}
-                            className="absolute top-3 right-3 text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                            className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 dark:hover:white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
                             <X className="w-5 h-5" />
                         </button>
 
-                        <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                            {selectedObject.name_kz}
+                        <h2 className="text-xl font-extrabold text-slate-900 dark:text-white mb-1">
+                            {selectedObject.name_ru}
                         </h2>
 
-                        <div className="flex gap-2 text-xs text-slate-500 dark:text-slate-400 mb-3">
-                            <span className="capitalize px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">
+                        <div className="flex gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">
+                            <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded">
                                 {selectedObject.object_type}
                             </span>
-                            <span>{selectedObject.name_ru}</span>
                         </div>
 
-                        <div className="flex items-center gap-4 border-t border-slate-200 dark:border-slate-700 pt-3 mt-3">
+                        <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-4 mt-2">
                             <a
                                 href={`https://www.openstreetmap.org/way/${selectedObject.canonical_id?.split('-')[1]}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-primary-500 text-sm flex items-center gap-1 hover:underline"
+                                className="text-emerald-600 dark:text-emerald-400 text-sm font-bold flex items-center gap-1.5 hover:underline"
                             >
-                                OpenStreetMap <ExternalLink className="w-3.5 h-3.5" />
+                                <ExternalLink className="w-4 h-4" /> OpenStreetMap
                             </a>
+
+                            <button
+                                onClick={() => setShowFeedbackModal(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-bold hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all"
+                            >
+                                <AlertTriangle className="w-4 h-4" />
+                                Нашли ошибку?
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
+
+            <FeedbackModal
+                isOpen={showFeedbackModal}
+                onClose={() => setShowFeedbackModal(false)}
+                targetType={selectedObject?.object_type || 'unspecified'}
+                targetName={selectedObject?.name_ru || 'unspecified'}
+                targetId={selectedObject?.id || 0}
+            />
         </div>
     );
 }

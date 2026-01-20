@@ -15,6 +15,8 @@ import ApiManagementPage from './pages/admin/ApiManagementPage';
 // Quiz Pages
 import QuizHomePage from './pages/quiz/QuizHomePage';
 import QuizPlayerPage from './pages/quiz/QuizPlayerPage';
+import MineralQuizPage from './pages/quiz/MineralQuizPage';
+import MineralBatchQuizPage from './pages/quiz/MineralBatchQuizPage';
 import ContourMapPage from './pages/quiz/ContourMapPage';
 
 // User Pages
@@ -23,6 +25,10 @@ import MyReviewsPage from './pages/user/MyReviewsPage';
 import NotificationsPage from './pages/user/NotificationsPage';
 import SettingsPage from './pages/user/SettingsPage';
 import WaterDirectoryPage from './pages/user/WaterDirectoryPage';
+
+// Teacher Pages
+import QuizBuilderPage from './pages/teacher/QuizBuilderPage';
+import QuizResultsPage from './pages/teacher/QuizResultsPage';
 
 // Simple RBAC Wrapper
 const ProtectedRoute = ({ children, roles = [] }: { children: React.ReactNode, roles?: string[] }) => {
@@ -54,6 +60,8 @@ export default function App() {
 
                 {/* Quiz Routes */}
                 <Route path="/quiz" element={<ProtectedRoute><QuizHomePage /></ProtectedRoute>} />
+                <Route path="/quiz/minerals" element={<ProtectedRoute><MineralQuizPage /></ProtectedRoute>} />
+                <Route path="/quiz/minerals-batch" element={<ProtectedRoute><MineralBatchQuizPage /></ProtectedRoute>} />
                 <Route path="/quiz/category/:category" element={<ProtectedRoute><QuizPlayerPage /></ProtectedRoute>} />
                 <Route path="/quiz/play/:quizId" element={<ProtectedRoute><QuizPlayerPage /></ProtectedRoute>} />
                 <Route path="/quiz/contour" element={<ProtectedRoute><ContourMapPage /></ProtectedRoute>} />
@@ -72,10 +80,17 @@ export default function App() {
                 <Route path="/expert/map-editor" element={<ProtectedRoute roles={['expert', 'admin']}><EditorPage /></ProtectedRoute>} />
                 <Route path="/expert/my-submissions" element={<ProtectedRoute roles={['expert', 'admin']}><SubmissionsPage /></ProtectedRoute>} />
 
+                {/* Teacher Routes */}
+                <Route path="/teacher/builder" element={<ProtectedRoute roles={['expert', 'admin']}><QuizBuilderPage /></ProtectedRoute>} />
+                <Route path="/teacher/stats" element={<ProtectedRoute roles={['expert', 'admin']}><QuizResultsPage /></ProtectedRoute>} />
+
                 {/* Admin Routes */}
                 <Route path="/admin/users" element={<ProtectedRoute roles={['admin']}><UsersPage /></ProtectedRoute>} />
                 <Route path="/admin/reviews" element={<ProtectedRoute roles={['admin']}><ReviewPage /></ProtectedRoute>} />
                 <Route path="/admin/api" element={<ProtectedRoute roles={['admin']}><ApiManagementPage /></ProtectedRoute>} />
+
+                {/* Shared Quiz (Publicly Accessible) */}
+                <Route path="/quiz/shared/:shareCode" element={<PublicRoute><QuizPlayerPage /></PublicRoute>} />
 
                 {/* Redirects */}
                 <Route path="/" element={<Navigate to="/quiz" />} />

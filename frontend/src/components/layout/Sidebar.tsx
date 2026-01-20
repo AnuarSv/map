@@ -69,6 +69,24 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     {!collapsed && <span>Контурная карта</span>}
                 </Link>
 
+                {(user?.role === 'expert' || isAdmin) && (
+                    <>
+                        <div className="mt-4 mb-2 px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                            {!collapsed && 'Инструменты'}
+                        </div>
+
+                        <Link to="/expert/map-editor" className={navItemClass(isActive('/expert/map-editor'))}>
+                            <Edit3 className="w-5 h-5 flex-shrink-0" />
+                            {!collapsed && <span>Редактор карты</span>}
+                        </Link>
+
+                        <Link to="/teacher/builder" className={navItemClass(isActive('/teacher/builder'))}>
+                            <GraduationCap className="w-5 h-5 flex-shrink-0" />
+                            {!collapsed && <span>Конструктор</span>}
+                        </Link>
+                    </>
+                )}
+
                 {isAdmin && (
                     <>
                         <div className="mt-4 mb-2 px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">

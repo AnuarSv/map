@@ -14,6 +14,8 @@ import (
 )
 
 const schema = `
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -147,6 +149,41 @@ CREATE TABLE IF NOT EXISTS quiz_results (
     completed_at TIMESTAMP DEFAULT NOW()
 );
 
+-- GeoKZ: User Feedback
+CREATE TABLE IF NOT EXISTS feedback (
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(50) NOT NULL,
+    target_type VARCHAR(50) NOT NULL,
+    target_id_str VARCHAR(255),
+    message TEXT NOT NULL,
+    user_id INT REFERENCES users(id),
+    status VARCHAR(20) DEFAULT 'open',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- GeoKZ: Teacher Quizzes (Custom)
+CREATE TABLE IF NOT EXISTS custom_quizzes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    teacher_id INT REFERENCES users(id),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    audience VARCHAR(50),
+    category_settings JSONB,
+    share_code VARCHAR(20) UNIQUE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS custom_quiz_attempts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    quiz_id UUID REFERENCES custom_quizzes(id) ON DELETE CASCADE,
+    student_name VARCHAR(255) NOT NULL,
+    score INTEGER NOT NULL,
+    total INTEGER NOT NULL,
+    time_seconds INTEGER,
+    completed_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_water_objects_status ON water_objects(status);
 CREATE INDEX IF NOT EXISTS idx_water_objects_type ON water_objects(object_type);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -156,6 +193,8 @@ CREATE INDEX IF NOT EXISTS idx_minerals_type ON minerals(mineral_type);
 CREATE INDEX IF NOT EXISTS idx_landforms_type ON landforms(landform_type);
 CREATE INDEX IF NOT EXISTS idx_quizzes_category ON quizzes(category);
 CREATE INDEX IF NOT EXISTS idx_quiz_results_user ON quiz_results(user_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status);
+CREATE INDEX IF NOT EXISTS idx_custom_quizzes_share_code ON custom_quizzes(share_code);
 `
 
 func main() {
